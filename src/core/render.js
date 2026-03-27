@@ -4,6 +4,7 @@ import { renderScreen } from '../views/index.js';
 import { renderLogin } from '../auth/loginView.js';
 import { logout, setupLoginListeners } from '../auth/session.js';
 import { me, refreshToken } from '../api/authApi.js';
+import { setupFranjasScreen } from '../views/franjasController.js';
 
 const ROLE_ALLOWED_SCREENS = {
   admin: screens,
@@ -55,6 +56,10 @@ export async function renderApp() {
   }
 
   app.innerHTML = renderLayout(renderScreen());
+
+  if (state.currentScreen === 'franjas') {
+    setupFranjasScreen(renderApp);
+  }
 
   screens.forEach((screen) => {
     const element = document.getElementById(`nav-${screen}`);

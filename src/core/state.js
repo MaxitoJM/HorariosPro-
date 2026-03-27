@@ -13,7 +13,15 @@ export const state = {
   currentScreen: 'dashboard',
   isLoggedIn: false,
   currentUser: null,
-  accessToken: null
+  accessToken: null,
+  scheduleConfig: {
+    groups: [],
+    rules: [],
+    academicConfig: null,
+    loading: false,
+    loaded: false,
+    error: null
+  }
 };
 
 function getInitialScreenByRole(role) {
@@ -41,6 +49,14 @@ export function logoutUser() {
   state.currentUser = null;
   state.accessToken = null;
   state.currentScreen = 'dashboard';
+  state.scheduleConfig = {
+    groups: [],
+    rules: [],
+    academicConfig: null,
+    loading: false,
+    loaded: false,
+    error: null
+  };
 
   sessionStorage.removeItem('nucleo_access_token');
   localStorage.removeItem('nucleo_user');
@@ -64,4 +80,24 @@ export function restoreSession() {
     logoutUser();
     return false;
   }
+}
+
+export function setScheduleConfigLoading(loading) {
+  state.scheduleConfig.loading = loading;
+}
+
+export function setScheduleConfigError(error) {
+  state.scheduleConfig.error = error;
+}
+
+export function setScheduleConfigData({ groups, rules, academicConfig }) {
+  state.scheduleConfig.groups = groups;
+  state.scheduleConfig.rules = rules;
+  state.scheduleConfig.academicConfig = academicConfig;
+  state.scheduleConfig.loaded = true;
+  state.scheduleConfig.error = null;
+}
+
+export function resetScheduleConfigLoaded() {
+  state.scheduleConfig.loaded = false;
 }
