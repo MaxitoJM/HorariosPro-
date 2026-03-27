@@ -13,6 +13,13 @@ enum Role {
   estudiante
 }
 
+enum SchedulingRuleType {
+  boolean
+  number
+  string
+  json
+}
+
 model User {
   id                  String               @id @default(cuid())
   nombre              String
@@ -71,4 +78,61 @@ model AuditLog {
 
   @@index([userId])
   @@map("audit_logs")
+}
+
+model TimeSlotGroup {
+  id         String      @id @default(cuid())
+  nombre     String      @unique
+  horaInicio String      @map("hora_inicio")
+  horaFin    String      @map("hora_fin")
+  activo     Boolean     @default(true)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  timeBlocks TimeBlock[]
+
+  @@map("time_slot_groups")
+}
+
+model TimeBlock {
+  id              String        @id @default(cuid())
+  grupoId         String        @map("grupo_id")
+  nombre          String
+  horaInicio      String        @map("hora_inicio")
+  horaFin         String        @map("hora_fin")
+  duracionMinutos Int           @map("duracion_minutos")
+  orden           Int
+  activo          Boolean       @default(true)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  grupo           TimeSlotGroup @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@unique([grupoId, orden])
+  @@index([grupoId])
+  @@map("time_blocks")
+}
+
+model SchedulingRule {
+  id          String             @id @default(cuid())
+  clave       String             @unique
+  valor       String
+  tipo        SchedulingRuleType
+  descripcion String?
+  activo      Boolean            @default(true)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  @@map("scheduling_rules")
+}
+
+model AcademicConfig {
+  id                       String   @id @default(cuid())
+  nombre                   String   @default("Configuracion general")
+  sesionesPorSemanaDefault Int      @default(3) @map("sesiones_por_semana_default")
+  duracionSesionDefault    Int      @default(90) @map("duracion_sesion_default")
+  diasHabiles              Json     @map("dias_habiles")
+  activo                   Boolean  @default(true)
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@map("academic_config")
 }
