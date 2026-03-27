@@ -20,6 +20,16 @@ enum SchedulingRuleType {
   json
 }
 
+enum WeekDay {
+  lunes
+  martes
+  miercoles
+  jueves
+  viernes
+  sabado
+  domingo
+}
+
 model User {
   id                  String               @id @default(cuid())
   nombre              String
@@ -135,4 +145,50 @@ model AcademicConfig {
   updatedAt                DateTime @updatedAt @map("updated_at")
 
   @@map("academic_config")
+}
+
+model Teacher {
+  id               String                   @id @default(cuid())
+  nombre           String
+  apellido         String
+  email            String                   @unique
+  departamento     String
+  titulo           String?
+  maxHorasSemana   Int                      @default(20) @map("max_horas_semana")
+  activo           Boolean                  @default(true)
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  availabilities   TeacherAvailability[]
+  assignableCourses TeacherAssignableCourse[]
+
+  @@map("teachers")
+}
+
+model TeacherAvailability {
+  id         String   @id @default(cuid())
+  teacherId  String   @map("teacher_id")
+  diaSemana  WeekDay  @map("dia_semana")
+  horaInicio String   @map("hora_inicio")
+  horaFin    String   @map("hora_fin")
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, diaSemana])
+  @@map("teacher_availabilities")
+}
+
+model TeacherAssignableCourse {
+  id          String   @id @default(cuid())
+  teacherId   String   @map("teacher_id")
+  codigoCurso String?  @map("codigo_curso")
+  nombreCurso String   @map("nombre_curso")
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@map("teacher_assignable_courses")
 }

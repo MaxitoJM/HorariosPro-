@@ -69,6 +69,86 @@ async function main() {
   if (academicConfigCount === 0) {
     await prisma.academicConfig.create({ data: DEFAULT_ACADEMIC_CONFIG });
   }
+
+  const teachersCount = await prisma.teacher.count();
+  if (teachersCount === 0) {
+    await prisma.teacher.create({
+      data: {
+        nombre: "Juan",
+        apellido: "Perez",
+        email: "juan.perez@unbosque.edu.co",
+        departamento: "Matematicas",
+        titulo: "Dr.",
+        maxHorasSemana: 20,
+        activo: true,
+        availabilities: {
+          create: [
+            { diaSemana: "lunes", horaInicio: "07:00", horaFin: "18:00", activo: true },
+            { diaSemana: "martes", horaInicio: "07:00", horaFin: "18:00", activo: true },
+            { diaSemana: "miercoles", horaInicio: "07:00", horaFin: "18:00", activo: true },
+            { diaSemana: "jueves", horaInicio: "07:00", horaFin: "14:00", activo: true }
+          ]
+        },
+        assignableCourses: {
+          create: [
+            { codigoCurso: "MAT-101", nombreCurso: "Calculo I", activo: true },
+            { codigoCurso: "MAT-201", nombreCurso: "Calculo II", activo: true },
+            { codigoCurso: "MAT-301", nombreCurso: "Calculo III", activo: true }
+          ]
+        }
+      }
+    });
+
+    await prisma.teacher.create({
+      data: {
+        nombre: "Maria",
+        apellido: "Gonzalez",
+        email: "maria.gonzalez@unbosque.edu.co",
+        departamento: "Fisica",
+        titulo: "Dra.",
+        maxHorasSemana: 18,
+        activo: true,
+        availabilities: {
+          create: [
+            { diaSemana: "lunes", horaInicio: "07:00", horaFin: "12:00", activo: true },
+            { diaSemana: "martes", horaInicio: "07:00", horaFin: "18:00", activo: true },
+            { diaSemana: "jueves", horaInicio: "07:00", horaFin: "18:00", activo: true }
+          ]
+        },
+        assignableCourses: {
+          create: [
+            { codigoCurso: "FIS-101", nombreCurso: "Fisica I", activo: true },
+            { codigoCurso: "FIS-201", nombreCurso: "Fisica II", activo: true }
+          ]
+        }
+      }
+    });
+
+    await prisma.teacher.create({
+      data: {
+        nombre: "Carlos",
+        apellido: "Rodriguez",
+        email: "carlos.rodriguez@unbosque.edu.co",
+        departamento: "Quimica",
+        titulo: "Dr.",
+        maxHorasSemana: 24,
+        activo: true,
+        availabilities: {
+          create: [
+            { diaSemana: "lunes", horaInicio: "08:00", horaFin: "17:00", activo: true },
+            { diaSemana: "miercoles", horaInicio: "08:00", horaFin: "17:00", activo: true },
+            { diaSemana: "viernes", horaInicio: "08:00", horaFin: "12:00", activo: true }
+          ]
+        },
+        assignableCourses: {
+          create: [
+            { codigoCurso: "QUI-101", nombreCurso: "Quimica General", activo: true },
+            { codigoCurso: "QUI-202", nombreCurso: "Quimica Organica", activo: true }
+          ]
+        }
+      }
+    });
+  }
 }
 
 main()

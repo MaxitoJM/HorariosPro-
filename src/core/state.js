@@ -21,6 +21,13 @@ export const state = {
     loading: false,
     loaded: false,
     error: null
+  },
+  teachers: {
+    items: [],
+    selectedTeacherId: null,
+    loading: false,
+    loaded: false,
+    error: null
   }
 };
 
@@ -53,6 +60,13 @@ export function logoutUser() {
     groups: [],
     rules: [],
     academicConfig: null,
+    loading: false,
+    loaded: false,
+    error: null
+  };
+  state.teachers = {
+    items: [],
+    selectedTeacherId: null,
     loading: false,
     loaded: false,
     error: null
@@ -100,4 +114,34 @@ export function setScheduleConfigData({ groups, rules, academicConfig }) {
 
 export function resetScheduleConfigLoaded() {
   state.scheduleConfig.loaded = false;
+}
+
+export function setTeachersLoading(loading) {
+  state.teachers.loading = loading;
+}
+
+export function setTeachersError(error) {
+  state.teachers.error = error;
+}
+
+export function setTeachersData(items) {
+  state.teachers.items = items;
+  state.teachers.loaded = true;
+  state.teachers.error = null;
+
+  if (!state.teachers.selectedTeacherId && items.length > 0) {
+    state.teachers.selectedTeacherId = items[0].id;
+  }
+
+  if (state.teachers.selectedTeacherId && !items.some((item) => item.id === state.teachers.selectedTeacherId)) {
+    state.teachers.selectedTeacherId = items[0]?.id ?? null;
+  }
+}
+
+export function setSelectedTeacherId(id) {
+  state.teachers.selectedTeacherId = id;
+}
+
+export function resetTeachersLoaded() {
+  state.teachers.loaded = false;
 }

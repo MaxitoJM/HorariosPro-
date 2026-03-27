@@ -10,6 +10,8 @@ import { AuthService } from "./modules/auth/auth.service.js";
 import { healthRouter } from "./modules/health/health.routes.js";
 import { scheduleConfigRouter } from "./modules/schedule-config/schedule-config.routes.js";
 import { ScheduleConfigService } from "./modules/schedule-config/schedule-config.service.js";
+import { TeachersService } from "./modules/teachers/teachers.service.js";
+import { teachersRouter } from "./modules/teachers/teachers.routes.js";
 
 type AppDeps = {
   authService?: Pick<
@@ -30,6 +32,16 @@ type AppDeps = {
     | "updateRules"
     | "getAcademicConfig"
     | "updateAcademicConfig"
+  >;
+  teachersService?: Pick<
+    TeachersService,
+    | "listTeachers"
+    | "getTeacherById"
+    | "createTeacher"
+    | "updateTeacher"
+    | "deleteTeacher"
+    | "updateTeacherAvailability"
+    | "updateTeacherAssignableCourses"
   >;
 };
 
@@ -58,6 +70,7 @@ export function createApp(deps: AppDeps = {}) {
   app.use("/api/v1/auth", authRouter(deps.authService));
   app.use("/api/v1/health", healthRouter());
   app.use("/api/v1/schedule-config", scheduleConfigRouter(deps.scheduleConfigService));
+  app.use("/api/v1/teachers", teachersRouter(deps.teachersService));
 
   app.use(notFound);
   app.use(errorHandler);

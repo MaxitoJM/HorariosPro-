@@ -4,6 +4,7 @@ import { renderScreen } from '../views/index.js';
 import { renderLogin } from '../auth/loginView.js';
 import { logout, setupLoginListeners } from '../auth/session.js';
 import { me, refreshToken } from '../api/authApi.js';
+import { setupDocentesScreen } from '../views/docentesController.js';
 import { setupFranjasScreen } from '../views/franjasController.js';
 
 const ROLE_ALLOWED_SCREENS = {
@@ -56,6 +57,10 @@ export async function renderApp() {
   }
 
   app.innerHTML = renderLayout(renderScreen());
+
+  if (state.currentScreen === 'docentes') {
+    setupDocentesScreen(renderApp);
+  }
 
   if (state.currentScreen === 'franjas') {
     setupFranjasScreen(renderApp);
