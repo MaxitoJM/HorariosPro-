@@ -1,0 +1,46 @@
+import { config } from "./config.js";
+import { refreshToken } from "./authApi.js";
+import { logoutUser, state } from "../core/state.js";
+
+async function rawRequest(path, options = {}) {
+  const response = await fetch(`${config.apiBaseUrl}${path}`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${state.accessToken}`,
+      ...(options.headers || {})
+    },
+    ...options
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload };
+}
+
+async function request(path, options = {}) {
+  let result = await rawRequest(path, options);
+  if (result.response.status === 401) {
+    try {
+      const session = await refreshToken();
+      state.isLoggedIn = true;
+      state.currentUser = session.user;
+      state.accessToken = session.accessToken;
+      sessionStorage.setItem("nucleo_access_token", session.accessToken);
+      localStorage.setItem("nucleo_user", JSON.stringify(session.user));
+      result = await rawRequest(path, options);
+    } catch {
+      logoutUser();
+      throw new Error("Tu sesion expiro. Inicia sesion nuevamente.");
+    }
+  }
+
+  if (!result.response.ok) {
+    throw new Error(result.payload?.error?.message || "Error inesperado");
+  }
+
+  return result.payload.data;
+}
+
+export function getDashboardSummary() {
+  return request("/dashboard/summary");
+}
