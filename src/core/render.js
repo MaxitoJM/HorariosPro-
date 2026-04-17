@@ -4,6 +4,13 @@ import { renderScreen } from '../views/index.js';
 import { renderLogin } from '../auth/loginView.js';
 import { logout, setupLoginListeners } from '../auth/session.js';
 import { me, refreshToken } from '../api/authApi.js';
+import { setupAulasScreen } from '../views/aulasController.js';
+import { setupCursosScreen } from '../views/cursosController.js';
+import { setupDashboardScreen } from '../views/dashboardController.js';
+import { setupDocentesScreen } from '../views/docentesController.js';
+import { setupFranjasScreen } from '../views/franjasController.js';
+import { setupHorariosScreen } from '../views/horariosController.js';
+import { setupAsignacionScreen } from '../views/asignacionController.js';
 
 const ROLE_ALLOWED_SCREENS = {
   admin: screens,
@@ -55,6 +62,34 @@ export async function renderApp() {
   }
 
   app.innerHTML = renderLayout(renderScreen());
+
+  if (state.currentScreen === 'dashboard') {
+    setupDashboardScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'docentes') {
+    setupDocentesScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'cursos') {
+    setupCursosScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'aulas') {
+    setupAulasScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'asignacion') {
+    setupAsignacionScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'horarios') {
+    setupHorariosScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'franjas') {
+    setupFranjasScreen(renderApp);
+  }
 
   screens.forEach((screen) => {
     const element = document.getElementById(`nav-${screen}`);
