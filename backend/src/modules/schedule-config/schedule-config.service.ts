@@ -1,4 +1,3 @@
-import type { PrismaClient } from "@prisma/client";
 import { HttpError } from "../../utils/http-error.js";
 import {
   DEFAULT_ACADEMIC_CONFIG,
@@ -68,7 +67,7 @@ function parseRuleValue(value: string, tipo: SchedulingRuleInput["tipo"]) {
 }
 
 export class ScheduleConfigService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: any) {}
 
   async listTimeSlotGroups() {
     await this.ensureDefaults();
@@ -82,9 +81,9 @@ export class ScheduleConfigService {
       orderBy: { horaInicio: "asc" }
     });
 
-    return groups.map((group) => ({
+    return groups.map((group: any) => ({
       ...group,
-      timeBlocks: group.timeBlocks.map((block) => ({
+      timeBlocks: group.timeBlocks.map((block: any) => ({
         ...block,
         grupoNombre: group.nombre
       }))
@@ -121,7 +120,7 @@ export class ScheduleConfigService {
     }
 
     await this.ensureUniqueGroupName(input.nombre, id);
-    current.timeBlocks.forEach((block) => {
+    current.timeBlocks.forEach((block: any) => {
       this.validateNestedRange(input.horaInicio, input.horaFin, block.horaInicio, block.horaFin);
     });
 
@@ -157,7 +156,7 @@ export class ScheduleConfigService {
       orderBy: [{ orden: "asc" }, { horaInicio: "asc" }]
     });
 
-    return blocks.map((block) => ({
+    return blocks.map((block: any) => ({
       ...block,
       grupoNombre: block.grupo.nombre
     }));
@@ -242,7 +241,7 @@ export class ScheduleConfigService {
     await this.ensureDefaults();
     const rules = await this.prisma.schedulingRule.findMany({ orderBy: { clave: "asc" } });
 
-    return rules.map((rule) => ({
+    return rules.map((rule: any) => ({
       ...rule,
       valor: parseRuleValue(rule.valor, rule.tipo as SchedulingRuleInput["tipo"])
     }));
@@ -329,7 +328,7 @@ export class ScheduleConfigService {
     ]);
 
     if (groupCount === 0) {
-      await this.prisma.$transaction(async (tx) => {
+      await this.prisma.$transaction(async (tx: any) => {
         const createdGroups = [];
         for (const group of DEFAULT_TIME_SLOT_GROUPS) {
           const created = await tx.timeSlotGroup.create({ data: group });

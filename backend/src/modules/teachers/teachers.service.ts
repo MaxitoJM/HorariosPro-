@@ -1,4 +1,3 @@
-import type { PrismaClient } from "@prisma/client";
 import { HttpError } from "../../utils/http-error.js";
 
 type RequestMeta = {
@@ -36,7 +35,7 @@ function parseTimeToMinutes(value: string) {
 }
 
 export class TeachersService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: any) {}
 
   async listTeachers() {
     const teachers = await this.prisma.teacher.findMany({
@@ -51,7 +50,7 @@ export class TeachersService {
       orderBy: [{ departamento: "asc" }, { apellido: "asc" }]
     });
 
-    return teachers.map((teacher) => this.toTeacherSummary(teacher));
+    return teachers.map((teacher: any) => this.toTeacherSummary(teacher));
   }
 
   async getTeacherById(id: string) {
@@ -140,7 +139,7 @@ export class TeachersService {
     await this.requireTeacher(id);
     this.validateAvailability(availability);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: any) => {
       await tx.teacherAvailability.deleteMany({ where: { teacherId: id } });
 
       if (availability.length > 0) {
@@ -164,7 +163,7 @@ export class TeachersService {
     await this.requireTeacher(id);
     this.validateAssignableCourses(courses);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: any) => {
       await tx.teacherAssignableCourse.deleteMany({ where: { teacherId: id } });
 
       if (courses.length > 0) {

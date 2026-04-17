@@ -30,6 +30,14 @@ enum WeekDay {
   domingo
 }
 
+enum ClassroomType {
+  aula
+  laboratorio
+  auditorio
+  sala_computo
+  otro
+}
+
 model User {
   id                  String               @id @default(cuid())
   nombre              String
@@ -115,6 +123,7 @@ model TimeBlock {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   grupo           TimeSlotGroup @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  scheduleMeetings SectionScheduleMeeting[]
 
   @@unique([grupoId, orden])
   @@index([grupoId])
@@ -160,6 +169,7 @@ model Teacher {
   updatedAt        DateTime                 @updatedAt @map("updated_at")
   availabilities   TeacherAvailability[]
   assignableCourses TeacherAssignableCourse[]
+  sections         CourseSection[]
 
   @@map("teachers")
 }
@@ -191,4 +201,97 @@ model TeacherAssignableCourse {
 
   @@index([teacherId])
   @@map("teacher_assignable_courses")
+}
+
+model Course {
+  id                  String          @id @default(cuid())
+  codigo              String          @unique
+  nombre              String
+  departamento        String
+  creditos            Int
+  sesionesPorSemana   Int             @map("sesiones_por_semana")
+  duracionMinutos     Int             @map("duracion_minutos")
+  activo              Boolean         @default(true)
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  sections            CourseSection[]
+
+  @@map("courses")
+}
+
+model CourseSection {
+  id              String     @id @default(cuid())
+  courseId        String     @map("course_id")
+  codigoSeccion   String     @map("codigo_seccion")
+  teacherId       String?    @map("teacher_id")
+  classroomId     String?    @map("classroom_id")
+  capacidad       Int
+  inscritos       Int        @default(0)
+  horarioResumen  String?    @map("horario_resumen")
+  activo          Boolean    @default(true)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  course          Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacher         Teacher?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  classroom       Classroom? @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  scheduleMeetings SectionScheduleMeeting[]
+
+  @@unique([courseId, codigoSeccion])
+  @@index([courseId])
+  @@index([teacherId])
+  @@index([classroomId])
+  @@map("course_sections")
+}
+
+model Classroom {
+  id             String          @id @default(cuid())
+  codigo         String          @unique
+  edificio       String
+  piso           String?
+  tipo           ClassroomType
+  capacidad      Int
+  equipamiento   Json
+  activo         Boolean         @default(true)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  sections       CourseSection[]
+  availabilities ClassroomAvailability[]
+  scheduleMeetings SectionScheduleMeeting[]
+
+  @@map("classrooms")
+}
+
+model ClassroomAvailability {
+  id          String    @id @default(cuid())
+  classroomId String    @map("classroom_id")
+  diaSemana   WeekDay   @map("dia_semana")
+  horaInicio  String    @map("hora_inicio")
+  horaFin     String    @map("hora_fin")
+  activo      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@index([classroomId, diaSemana])
+  @@map("classroom_availabilities")
+}
+
+model SectionScheduleMeeting {
+  id          String        @id @default(cuid())
+  sectionId   String        @map("section_id")
+  diaSemana   WeekDay       @map("dia_semana")
+  timeBlockId String        @map("time_block_id")
+  classroomId String        @map("classroom_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  section     CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  timeBlock   TimeBlock     @relation(fields: [timeBlockId], references: [id], onDelete: Restrict)
+  classroom   Classroom     @relation(fields: [classroomId], references: [id], onDelete: Restrict)
+
+  @@unique([sectionId, diaSemana, timeBlockId])
+  @@unique([classroomId, diaSemana, timeBlockId])
+  @@index([sectionId])
+  @@index([timeBlockId])
+  @@index([classroomId])
+  @@map("section_schedule_meetings")
 }
