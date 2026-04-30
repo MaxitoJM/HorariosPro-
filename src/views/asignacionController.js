@@ -1,7 +1,11 @@
 import { listCourses } from "../api/coursesApi.js";
 import { listTeachers } from "../api/teachersApi.js";
 import { listClassrooms } from "../api/classroomsApi.js";
-import { getManualSchedulingContext, getSchedulingOverview, saveManualAssignment } from "../api/schedulingApi.js";
+import {
+  getManualSchedulingContext,
+  getSchedulingOverview,
+  saveManualAssignment
+} from "../api/schedulingApi.js";
 import {
   resetSchedulingLoaded,
   setClassroomsData,

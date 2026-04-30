@@ -72,8 +72,8 @@ export function renderAsignacion() {
     <div class="p-8 space-y-6">
       <div class="flex justify-between items-center">
         <div>
-          <h2 class="text-3xl font-bold text-gray-800">Asignacion manual de horarios</h2>
-          <p class="text-gray-600 mt-2">HU-18 implementada con persistencia real, validacion de conflictos y reutilizacion para visualizacion</p>
+          <h2 class="text-3xl font-bold text-gray-800">Asignacion de Horarios</h2>
+          <p class="text-gray-600 mt-2">HU-18: Asignacion manual de horarios por seccion</p>
         </div>
         <button id="reloadScheduling" class="px-4 py-3 bg-gray-900 text-white rounded-lg">Recargar</button>
       </div>

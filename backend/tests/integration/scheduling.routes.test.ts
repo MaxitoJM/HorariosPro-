@@ -38,6 +38,20 @@ function buildSchedulingServiceMock() {
       entityId: null,
       counts: { totalMeetings: 3, totalSectionsScheduled: 1, totalCoursesScheduled: 1 },
       meetings: []
+    }),
+    detectConflicts: vi.fn().mockResolvedValue({
+      conflicts: [
+        {
+          id: "conflict-1",
+          type: "SECTION_UNSCHEDULED",
+          severity: "warning",
+          description: "La seccion MAT-101/A no tiene horario programado.",
+          sectionId: "section-1",
+          suggestions: ["Programar el horario manualmente"]
+        }
+      ],
+      summary: { total: 1, critical: 0, warning: 1, info: 0 },
+      scannedAt: "2026-01-01T00:00:00.000Z"
     })
   };
 }
@@ -106,6 +120,19 @@ describe("scheduling integration", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.counts.totalMeetings).toBe(3);
   });
+
+  it("detecta conflictos de horario", async () => {
+    const app = createApp({ schedulingService: buildSchedulingServiceMock() as any });
+    const response = await request(app)
+      .get("/api/v1/scheduling/conflicts")
+      .set("Authorization", `Bearer ${adminToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.summary.total).toBe(1);
+    expect(response.body.data.summary.warning).toBe(1);
+    expect(response.body.data.conflicts[0].type).toBe("SECTION_UNSCHEDULED");
+  });
+
 });
 
 describe("dashboard integration", () => {

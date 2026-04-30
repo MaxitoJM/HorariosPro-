@@ -1,4 +1,5 @@
 import { HttpError } from "../../utils/http-error.js";
+import { ConflictDetectionService, type ConflictDetectionResult } from "./conflict-detection.service.js";
 
 type RequestMeta = {
   userAgent?: string;
@@ -32,7 +33,15 @@ function toHorarioResumen(meetings: any[]) {
 }
 
 export class SchedulingService {
-  constructor(private readonly prisma: any) {}
+  private readonly conflictService: ConflictDetectionService;
+
+  constructor(private readonly prisma: any) {
+    this.conflictService = new ConflictDetectionService(prisma);
+  }
+
+  async detectConflicts(): Promise<ConflictDetectionResult> {
+    return this.conflictService.detectAll();
+  }
 
   async getManualContext(sectionId: string) {
     const section = await this.prisma.courseSection.findUnique({

@@ -4,9 +4,17 @@ import { authenticate, type AuthenticatedRequest } from "../../middlewares/authe
 import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { SchedulingService } from "./scheduling.service.js";
-import { getManualContextSchema, getOverviewSchema, saveManualAssignmentSchema } from "./scheduling.schema.js";
+import {
+  detectConflictsSchema,
+  getManualContextSchema,
+  getOverviewSchema,
+  saveManualAssignmentSchema
+} from "./scheduling.schema.js";
 
-type SchedulingServiceLike = Pick<SchedulingService, "getManualContext" | "saveManualAssignment" | "getOverview">;
+type SchedulingServiceLike = Pick<
+  SchedulingService,
+  "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts"
+>;
 
 function getRequestMeta(req: AuthenticatedRequest) {
   return {
@@ -56,6 +64,16 @@ export function schedulingRouter(service?: SchedulingServiceLike) {
       }
     }
   );
+
+  // HU-20 / HU-30: conflict detection
+  router.get("/conflicts", validate(detectConflictsSchema), async (_req, res, next) => {
+    try {
+      const data = await schedulingService.detectConflicts();
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return next(error);
+    }
+  });
 
   return router;
 }
