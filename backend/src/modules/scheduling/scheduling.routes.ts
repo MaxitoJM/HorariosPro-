@@ -4,9 +4,19 @@ import { authenticate, type AuthenticatedRequest } from "../../middlewares/authe
 import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { SchedulingService } from "./scheduling.service.js";
-import { getManualContextSchema, getOverviewSchema, saveManualAssignmentSchema } from "./scheduling.schema.js";
+import {
+  autoGenerateSchema,
+  detectConflictsSchema,
+  getManualContextSchema,
+  getOverviewSchema,
+  reassignSectionSchema,
+  saveManualAssignmentSchema
+} from "./scheduling.schema.js";
 
-type SchedulingServiceLike = Pick<SchedulingService, "getManualContext" | "saveManualAssignment" | "getOverview">;
+type SchedulingServiceLike = Pick<
+  SchedulingService,
+  "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts" | "autoGenerate" | "reassignSection"
+>;
 
 function getRequestMeta(req: AuthenticatedRequest) {
   return {
@@ -50,6 +60,49 @@ export function schedulingRouter(service?: SchedulingServiceLike) {
     async (req: AuthenticatedRequest, res, next) => {
       try {
         const data = await schedulingService.saveManualAssignment(String(req.params.sectionId), req.body, getRequestMeta(req));
+        return res.status(200).json({ success: true, data });
+      } catch (error) {
+        return next(error);
+      }
+    }
+  );
+
+  // HU-20 / HU-30: conflict detection
+  router.get("/conflicts", validate(detectConflictsSchema), async (_req, res, next) => {
+    try {
+      const data = await schedulingService.detectConflicts();
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  // HU-21: auto-generate schedules for unassigned sections
+  router.post(
+    "/auto-generate",
+    authorize("admin"),
+    validate(autoGenerateSchema),
+    async (req: AuthenticatedRequest, res, next) => {
+      try {
+        const data = await schedulingService.autoGenerate(
+          getRequestMeta(req),
+          (req.body as { sectionIds?: string[] }).sectionIds
+        );
+        return res.status(200).json({ success: true, data });
+      } catch (error) {
+        return next(error);
+      }
+    }
+  );
+
+  // HU-23: auto-reassign a specific section
+  router.post(
+    "/sections/:sectionId/reassign",
+    authorize("admin"),
+    validate(reassignSectionSchema),
+    async (req: AuthenticatedRequest, res, next) => {
+      try {
+        const data = await schedulingService.reassignSection(String(req.params.sectionId), getRequestMeta(req));
         return res.status(200).json({ success: true, data });
       } catch (error) {
         return next(error);

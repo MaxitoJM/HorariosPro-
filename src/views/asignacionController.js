@@ -1,7 +1,13 @@
 import { listCourses } from "../api/coursesApi.js";
 import { listTeachers } from "../api/teachersApi.js";
 import { listClassrooms } from "../api/classroomsApi.js";
-import { getManualSchedulingContext, getSchedulingOverview, saveManualAssignment } from "../api/schedulingApi.js";
+import {
+  autoGenerate,
+  getManualSchedulingContext,
+  getSchedulingOverview,
+  reassignSection,
+  saveManualAssignment
+} from "../api/schedulingApi.js";
 import {
   resetSchedulingLoaded,
   setClassroomsData,
@@ -66,6 +72,63 @@ function collectSelectedMeetings() {
   });
 }
 
+async function handleAutoGenerate(renderApp) {
+  state.scheduling.autoGenerating = true;
+  state.scheduling.autoGenerateResult = null;
+  state.scheduling.autoGenerateError = null;
+  renderApp();
+
+  try {
+    const data = await autoGenerate();
+    state.scheduling.autoGenerateResult = data;
+    if (data.assigned.length > 0) {
+      // Reload overview after successful generation
+      const overview = await getSchedulingOverview("all");
+      setSchedulingOverview(overview);
+      resetSchedulingLoaded();
+      await loadSchedulingBase(renderApp);
+      return;
+    }
+  } catch (error) {
+    state.scheduling.autoGenerateError = error.message || "No se pudo ejecutar la generacion automatica";
+  } finally {
+    state.scheduling.autoGenerating = false;
+    renderApp();
+  }
+}
+
+async function handleReassign(renderApp) {
+  const sectionId = state.scheduling.selectedSectionId;
+  if (!sectionId) return;
+
+  const msgEl = document.getElementById("reassignMsg");
+  if (msgEl) {
+    msgEl.textContent = "Buscando reasignacion...";
+    msgEl.className = "mb-2 p-3 rounded-lg text-xs font-medium bg-blue-50 text-blue-800";
+    msgEl.classList.remove("hidden");
+  }
+
+  try {
+    const data = await reassignSection(sectionId);
+    setManualContext(data);
+    const overview = await getSchedulingOverview("all");
+    setSchedulingOverview(overview);
+    renderApp();
+
+    const updated = document.getElementById("reassignMsg");
+    if (updated) {
+      updated.textContent = "Reasignacion exitosa.";
+      updated.className = "mb-2 p-3 rounded-lg text-xs font-medium bg-green-50 text-green-700";
+    }
+  } catch (error) {
+    const updated = document.getElementById("reassignMsg");
+    if (updated) {
+      updated.textContent = error.message || "No se encontro reasignacion valida.";
+      updated.className = "mb-2 p-3 rounded-lg text-xs font-medium bg-red-50 text-red-700";
+    }
+  }
+}
+
 export function setupAsignacionScreen(renderApp) {
   if (!state.scheduling.loaded && !state.scheduling.loading) {
     loadSchedulingBase(renderApp);
@@ -76,11 +139,17 @@ export function setupAsignacionScreen(renderApp) {
     await loadSchedulingBase(renderApp);
   });
 
+  document.getElementById("autoGenerateBtn")?.addEventListener("click", () => {
+    if (!state.scheduling.autoGenerating) handleAutoGenerate(renderApp);
+  });
+
   document.getElementById("manualSectionSelector")?.addEventListener("change", async (event) => {
     const sectionId = event.target.value;
     setSelectedSchedulingSectionId(sectionId || null);
     await loadManualContext(sectionId, renderApp);
   });
+
+  document.getElementById("reassignSectionBtn")?.addEventListener("click", () => handleReassign(renderApp));
 
   document.getElementById("manualAssignmentForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();

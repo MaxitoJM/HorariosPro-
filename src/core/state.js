@@ -49,10 +49,19 @@ export const state = {
     selectedSectionId: null,
     loading: false,
     loaded: false,
-    error: null
+    error: null,
+    autoGenerating: false,
+    autoGenerateResult: null,
+    autoGenerateError: null
   },
   dashboard: {
     summary: null,
+    loading: false,
+    loaded: false,
+    error: null
+  },
+  conflicts: {
+    result: null,
     loading: false,
     loaded: false,
     error: null
@@ -119,10 +128,19 @@ export function logoutUser() {
     selectedSectionId: null,
     loading: false,
     loaded: false,
-    error: null
+    error: null,
+    autoGenerating: false,
+    autoGenerateResult: null,
+    autoGenerateError: null
   };
   state.dashboard = {
     summary: null,
+    loading: false,
+    loaded: false,
+    error: null
+  };
+  state.conflicts = {
+    result: null,
     loading: false,
     loaded: false,
     error: null
@@ -308,4 +326,22 @@ export function setDashboardSummary(summary) {
 
 export function resetDashboardLoaded() {
   state.dashboard.loaded = false;
+}
+
+export function setConflictsLoading(loading) {
+  state.conflicts.loading = loading;
+}
+
+export function setConflictsError(error) {
+  state.conflicts.error = error;
+}
+
+export function setConflictsResult(result) {
+  state.conflicts.result = result;
+  state.conflicts.loaded = true;
+  state.conflicts.error = null;
+}
+
+export function resetConflictsLoaded() {
+  state.conflicts.loaded = false;
 }

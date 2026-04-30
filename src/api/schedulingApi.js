@@ -65,3 +65,22 @@ export function saveManualAssignment(sectionId, data) {
     body: JSON.stringify(data)
   });
 }
+
+export function getConflicts() {
+  return request("/scheduling/conflicts");
+}
+
+export function autoGenerate(sectionIds) {
+  return request("/scheduling/auto-generate", {
+    method: "POST",
+    body: JSON.stringify(sectionIds ? { sectionIds } : {})
+  });
+}
+
+export function reassignSection(sectionId) {
+  return request(`/scheduling/sections/${sectionId}/reassign`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+

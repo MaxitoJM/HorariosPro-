@@ -1,4 +1,5 @@
 import { HttpError } from "../../utils/http-error.js";
+import { ConflictDetectionService, type ConflictDetectionResult } from "./conflict-detection.service.js";
 
 type RequestMeta = {
   userAgent?: string;
@@ -14,7 +15,76 @@ type ManualAssignmentInput = {
   }>;
 };
 
+type AutoGenerateResult = {
+  assigned: Array<{
+    sectionId: string;
+    sectionLabel: string;
+    classroomCodigo: string;
+    meetingLabels: string[];
+  }>;
+  skipped: Array<{
+    sectionId: string;
+    sectionLabel: string;
+    reason: string;
+  }>;
+  total: number;
+};
+
+type CandidateSlot = {
+  diaSemana: string;
+  timeBlockId: string;
+  blockHoraInicio: string;
+  blockHoraFin: string;
+  dayIndex: number;
+};
+
 const DAY_ORDER = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+const WORK_DAYS = DAY_ORDER.slice(0, 5);
+
+function parseTimeToMinutes(value: string): number {
+  const [h = 0, m = 0] = value.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function isBlockCoveredByAvailability(
+  availabilities: Array<{ activo: boolean; diaSemana: string; horaInicio: string; horaFin: string }>,
+  diaSemana: string,
+  blockStart: string,
+  blockEnd: string
+): boolean {
+  const bStart = parseTimeToMinutes(blockStart);
+  const bEnd = parseTimeToMinutes(blockEnd);
+  return availabilities.some(
+    (av) =>
+      av.activo &&
+      av.diaSemana === diaSemana &&
+      parseTimeToMinutes(av.horaInicio) <= bStart &&
+      parseTimeToMinutes(av.horaFin) >= bEnd
+  );
+}
+
+function pickSlots(slots: CandidateSlot[], count: number, avoidConsecutive: boolean): CandidateSlot[] | null {
+  if (slots.length < count) return null;
+
+  const sorted = [...slots].sort((a, b) => {
+    if (a.dayIndex !== b.dayIndex) return a.dayIndex - b.dayIndex;
+    return parseTimeToMinutes(a.blockHoraInicio) - parseTimeToMinutes(b.blockHoraInicio);
+  });
+
+  if (avoidConsecutive) {
+    const selected: CandidateSlot[] = [];
+    for (const slot of sorted) {
+      if (selected.length === count) break;
+      const lastDay = selected.length > 0 ? selected[selected.length - 1]!.dayIndex : -2;
+      if (slot.dayIndex - lastDay > 1) {
+        selected.push(slot);
+      }
+    }
+    if (selected.length === count) return selected;
+  }
+
+  return sorted.slice(0, count);
+}
 
 function buildTeacherAvailabilitySet(availabilities: any[]) {
   return new Set(availabilities.filter((item) => item.activo).map((item) => `${item.diaSemana}:${item.horaInicio}:${item.horaFin}`));
@@ -32,7 +102,15 @@ function toHorarioResumen(meetings: any[]) {
 }
 
 export class SchedulingService {
-  constructor(private readonly prisma: any) {}
+  private readonly conflictService: ConflictDetectionService;
+
+  constructor(private readonly prisma: any) {
+    this.conflictService = new ConflictDetectionService(prisma);
+  }
+
+  async detectConflicts(): Promise<ConflictDetectionResult> {
+    return this.conflictService.detectAll();
+  }
 
   async getManualContext(sectionId: string) {
     const section = await this.prisma.courseSection.findUnique({
@@ -388,6 +466,280 @@ export class SchedulingService {
       entityId: entityId ?? null,
       counts,
       meetings
+    };
+  }
+
+  async autoGenerate(meta: RequestMeta, sectionIds?: string[]): Promise<AutoGenerateResult> {
+    const sections = await this.prisma.courseSection.findMany({
+      where: {
+        activo: true,
+        teacherId: { not: null },
+        ...(sectionIds ? { id: { in: sectionIds } } : {}),
+        scheduleMeetings: { none: {} }
+      },
+      include: {
+        course: true,
+        teacher: { include: { availabilities: { where: { activo: true } } } }
+      }
+    });
+
+    const [timeBlocks, classrooms, rules] = await Promise.all([
+      this.prisma.timeBlock.findMany({
+        where: { activo: true, grupo: { activo: true } },
+        include: { grupo: true },
+        orderBy: [{ orden: "asc" }]
+      }),
+      this.prisma.classroom.findMany({
+        where: { activo: true },
+        include: { availabilities: { where: { activo: true } } },
+        orderBy: [{ edificio: "asc" }, { codigo: "asc" }]
+      }),
+      this.prisma.schedulingRule.findMany({ where: { activo: true } })
+    ]);
+
+    const avoidConsecutive =
+      rules.find((r: any) => r.clave === "EVITAR_DIAS_CONSECUTIVOS")?.valor === "true";
+
+    const assigned: AutoGenerateResult["assigned"] = [];
+    const skipped: AutoGenerateResult["skipped"] = [];
+
+    for (const section of sections) {
+      const result = await this.tryAutoAssign(section, timeBlocks, classrooms, avoidConsecutive);
+      if (result.success) {
+        assigned.push(result.data!);
+      } else {
+        skipped.push({
+          sectionId: section.id,
+          sectionLabel: `${section.course.codigo}/${section.codigoSeccion}`,
+          reason: result.reason!
+        });
+      }
+    }
+
+    await this.createAuditLog(meta.userId ?? null, "scheduling.auto_generate", meta, {
+      total: sections.length,
+      assigned: assigned.length,
+      skipped: skipped.length
+    });
+
+    return { assigned, skipped, total: sections.length };
+  }
+
+  async reassignSection(sectionId: string, meta: RequestMeta) {
+    const section = await this.prisma.courseSection.findUnique({
+      where: { id: sectionId },
+      include: {
+        course: true,
+        teacher: { include: { availabilities: { where: { activo: true } } } },
+        scheduleMeetings: true
+      }
+    });
+
+    if (!section) {
+      throw new HttpError(404, "Seccion no encontrada", "SECTION_NOT_FOUND");
+    }
+
+    if (!section.teacherId || !section.teacher) {
+      throw new HttpError(400, "La seccion debe tener un docente para reasignar horario", "SECTION_WITHOUT_TEACHER");
+    }
+
+    // Save current state for potential rollback
+    const previousMeetings = section.scheduleMeetings.map((m: any) => ({
+      diaSemana: m.diaSemana,
+      timeBlockId: m.timeBlockId,
+      classroomId: m.classroomId
+    }));
+    const previousClassroomId = section.classroomId;
+    const previousHorarioResumen = section.horarioResumen;
+
+    const [timeBlocks, classrooms, rules] = await Promise.all([
+      this.prisma.timeBlock.findMany({
+        where: { activo: true, grupo: { activo: true } },
+        include: { grupo: true },
+        orderBy: [{ orden: "asc" }]
+      }),
+      this.prisma.classroom.findMany({
+        where: { activo: true },
+        include: { availabilities: { where: { activo: true } } },
+        orderBy: [{ edificio: "asc" }, { codigo: "asc" }]
+      }),
+      this.prisma.schedulingRule.findMany({ where: { activo: true } })
+    ]);
+
+    const avoidConsecutive =
+      rules.find((r: any) => r.clave === "EVITAR_DIAS_CONSECUTIVOS")?.valor === "true";
+
+    // Clear current assignment
+    await this.prisma.$transaction([
+      this.prisma.sectionScheduleMeeting.deleteMany({ where: { sectionId } }),
+      this.prisma.courseSection.update({
+        where: { id: sectionId },
+        data: { classroomId: null, horarioResumen: null }
+      })
+    ]);
+
+    const result = await this.tryAutoAssign(section, timeBlocks, classrooms, avoidConsecutive);
+
+    if (result.success) {
+      await this.createAuditLog(meta.userId ?? null, "scheduling.reassign.success", meta, { sectionId });
+      return this.getManualContext(sectionId);
+    }
+
+    // Restore previous state
+    if (previousMeetings.length > 0) {
+      await this.prisma.$transaction(async (tx: any) => {
+        for (const m of previousMeetings) {
+          await tx.sectionScheduleMeeting.create({
+            data: { sectionId, diaSemana: m.diaSemana, timeBlockId: m.timeBlockId, classroomId: m.classroomId }
+          });
+        }
+        await tx.courseSection.update({
+          where: { id: sectionId },
+          data: { classroomId: previousClassroomId, horarioResumen: previousHorarioResumen }
+        });
+      });
+    }
+
+    await this.createAuditLog(meta.userId ?? null, "scheduling.reassign.failed", meta, {
+      sectionId,
+      reason: result.reason
+    });
+
+    throw new HttpError(
+      409,
+      result.reason ?? "No se encontro una reasignacion valida para esta seccion",
+      "REASSIGN_NO_SLOT_AVAILABLE"
+    );
+  }
+
+  private async tryAutoAssign(
+    section: any,
+    timeBlocks: any[],
+    classrooms: any[],
+    avoidConsecutive: boolean
+  ): Promise<{ success: true; data: AutoGenerateResult["assigned"][number] } | { success: false; reason: string }> {
+    const requiredSessions: number = section.course.sesionesPorSemana;
+
+    if (!section.teacher || section.teacher.availabilities.length === 0) {
+      return { success: false, reason: "El docente no tiene disponibilidad registrada" };
+    }
+
+    // Build candidate slots: (day, block) where teacher is available
+    const candidateSlots: CandidateSlot[] = [];
+    for (const block of timeBlocks) {
+      for (const day of WORK_DAYS) {
+        if (isBlockCoveredByAvailability(section.teacher.availabilities, day, block.horaInicio, block.horaFin)) {
+          candidateSlots.push({
+            diaSemana: day,
+            timeBlockId: block.id,
+            blockHoraInicio: block.horaInicio,
+            blockHoraFin: block.horaFin,
+            dayIndex: DAY_ORDER.indexOf(day)
+          });
+        }
+      }
+    }
+
+    if (candidateSlots.length < requiredSessions) {
+      return {
+        success: false,
+        reason: `El docente no tiene suficientes bloques de disponibilidad (necesita ${requiredSessions}, dispone de ${candidateSlots.length})`
+      };
+    }
+
+    // Remove slots where teacher already has another section scheduled
+    const existingTeacherMeetings = await this.prisma.sectionScheduleMeeting.findMany({
+      where: { section: { teacherId: section.teacherId }, NOT: { sectionId: section.id } }
+    });
+    const busyTeacherKeys = new Set(
+      existingTeacherMeetings.map((m: any) => `${m.diaSemana}::${m.timeBlockId}`)
+    );
+
+    const freeTeacherSlots = candidateSlots.filter(
+      (s) => !busyTeacherKeys.has(`${s.diaSemana}::${s.timeBlockId}`)
+    );
+
+    if (freeTeacherSlots.length < requiredSessions) {
+      return {
+        success: false,
+        reason: "El docente no tiene suficientes bloques libres (conflictos con otras secciones asignadas)"
+      };
+    }
+
+    // Try each suitable classroom
+    const suitableClassrooms = classrooms.filter((c) => c.capacidad >= section.capacidad);
+
+    if (suitableClassrooms.length === 0) {
+      return { success: false, reason: `No existe aula con capacidad suficiente para ${section.capacidad} estudiantes` };
+    }
+
+    for (const classroom of suitableClassrooms) {
+      const existingClassroomMeetings = await this.prisma.sectionScheduleMeeting.findMany({
+        where: { classroomId: classroom.id, NOT: { sectionId: section.id } }
+      });
+      const busyClassroomKeys = new Set(
+        existingClassroomMeetings.map((m: any) => `${m.diaSemana}::${m.timeBlockId}`)
+      );
+
+      const freeSlots = freeTeacherSlots.filter((s) => {
+        if (busyClassroomKeys.has(`${s.diaSemana}::${s.timeBlockId}`)) return false;
+        if (classroom.availabilities.length === 0) return true;
+        return isBlockCoveredByAvailability(
+          classroom.availabilities,
+          s.diaSemana,
+          s.blockHoraInicio,
+          s.blockHoraFin
+        );
+      });
+
+      if (freeSlots.length < requiredSessions) continue;
+
+      const selected = pickSlots(freeSlots, requiredSessions, avoidConsecutive);
+      if (!selected) continue;
+
+      // Persist the assignment
+      const meetingLabels: string[] = [];
+      await this.prisma.$transaction(async (tx: any) => {
+        for (const slot of selected) {
+          await tx.sectionScheduleMeeting.create({
+            data: {
+              sectionId: section.id,
+              diaSemana: slot.diaSemana,
+              timeBlockId: slot.timeBlockId,
+              classroomId: classroom.id
+            }
+          });
+          meetingLabels.push(`${slot.diaSemana} ${slot.blockHoraInicio}-${slot.blockHoraFin}`);
+        }
+
+        const reloaded = await tx.sectionScheduleMeeting.findMany({
+          where: { sectionId: section.id },
+          include: { timeBlock: true }
+        });
+
+        await tx.courseSection.update({
+          where: { id: section.id },
+          data: {
+            classroomId: classroom.id,
+            horarioResumen: toHorarioResumen(reloaded)
+          }
+        });
+      });
+
+      return {
+        success: true,
+        data: {
+          sectionId: section.id,
+          sectionLabel: `${section.course.codigo}/${section.codigoSeccion}`,
+          classroomCodigo: classroom.codigo,
+          meetingLabels
+        }
+      };
+    }
+
+    return {
+      success: false,
+      reason: "No se encontro aula disponible con capacidad y bloques coincidentes con el docente"
     };
   }
 

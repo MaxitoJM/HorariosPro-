@@ -34,3 +34,26 @@ export const getOverviewSchema = z.object({
   }),
   params: z.object({}).default({})
 });
+
+export const detectConflictsSchema = z.object({
+  body: emptyBody,
+  query: z.object({}).default({}),
+  params: z.object({}).default({})
+});
+
+export const autoGenerateSchema = z.object({
+  body: z
+    .object({
+      sectionIds: z.array(z.string().min(1)).optional()
+    })
+    .default({}),
+  query: z.object({}).default({}),
+  params: z.object({}).default({})
+});
+
+export const reassignSectionSchema = z.object({
+  body: emptyBody,
+  query: z.object({}).default({}),
+  params: z.object({ sectionId: z.string().min(1) })
+});
+
