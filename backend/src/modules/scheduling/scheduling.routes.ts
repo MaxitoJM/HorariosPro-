@@ -5,15 +5,17 @@ import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { SchedulingService } from "./scheduling.service.js";
 import {
+  autoGenerateSchema,
   detectConflictsSchema,
   getManualContextSchema,
   getOverviewSchema,
+  reassignSectionSchema,
   saveManualAssignmentSchema
 } from "./scheduling.schema.js";
 
 type SchedulingServiceLike = Pick<
   SchedulingService,
-  "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts"
+  "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts" | "autoGenerate" | "reassignSection"
 >;
 
 function getRequestMeta(req: AuthenticatedRequest) {
@@ -74,6 +76,39 @@ export function schedulingRouter(service?: SchedulingServiceLike) {
       return next(error);
     }
   });
+
+  // HU-21: auto-generate schedules for unassigned sections
+  router.post(
+    "/auto-generate",
+    authorize("admin"),
+    validate(autoGenerateSchema),
+    async (req: AuthenticatedRequest, res, next) => {
+      try {
+        const data = await schedulingService.autoGenerate(
+          getRequestMeta(req),
+          (req.body as { sectionIds?: string[] }).sectionIds
+        );
+        return res.status(200).json({ success: true, data });
+      } catch (error) {
+        return next(error);
+      }
+    }
+  );
+
+  // HU-23: auto-reassign a specific section
+  router.post(
+    "/sections/:sectionId/reassign",
+    authorize("admin"),
+    validate(reassignSectionSchema),
+    async (req: AuthenticatedRequest, res, next) => {
+      try {
+        const data = await schedulingService.reassignSection(String(req.params.sectionId), getRequestMeta(req));
+        return res.status(200).json({ success: true, data });
+      } catch (error) {
+        return next(error);
+      }
+    }
+  );
 
   return router;
 }

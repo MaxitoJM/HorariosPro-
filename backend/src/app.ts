@@ -73,7 +73,7 @@ type AppDeps = {
   >;
   schedulingService?: Pick<
     SchedulingService,
-    "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts"
+    "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts" | "autoGenerate" | "reassignSection"
   >;
   dashboardService?: Pick<DashboardService, "getSummary">;
 };

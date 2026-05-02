@@ -49,7 +49,10 @@ export const state = {
     selectedSectionId: null,
     loading: false,
     loaded: false,
-    error: null
+    error: null,
+    autoGenerating: false,
+    autoGenerateResult: null,
+    autoGenerateError: null
   },
   dashboard: {
     summary: null,
@@ -125,7 +128,10 @@ export function logoutUser() {
     selectedSectionId: null,
     loading: false,
     loaded: false,
-    error: null
+    error: null,
+    autoGenerating: false,
+    autoGenerateResult: null,
+    autoGenerateError: null
   };
   state.dashboard = {
     summary: null,
