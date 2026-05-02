@@ -56,6 +56,12 @@ export const state = {
     loading: false,
     loaded: false,
     error: null
+  },
+  conflicts: {
+    result: null,
+    loading: false,
+    loaded: false,
+    error: null
   }
 };
 
@@ -123,6 +129,12 @@ export function logoutUser() {
   };
   state.dashboard = {
     summary: null,
+    loading: false,
+    loaded: false,
+    error: null
+  };
+  state.conflicts = {
+    result: null,
     loading: false,
     loaded: false,
     error: null
@@ -308,4 +320,22 @@ export function setDashboardSummary(summary) {
 
 export function resetDashboardLoaded() {
   state.dashboard.loaded = false;
+}
+
+export function setConflictsLoading(loading) {
+  state.conflicts.loading = loading;
+}
+
+export function setConflictsError(error) {
+  state.conflicts.error = error;
+}
+
+export function setConflictsResult(result) {
+  state.conflicts.result = result;
+  state.conflicts.loaded = true;
+  state.conflicts.error = null;
+}
+
+export function resetConflictsLoaded() {
+  state.conflicts.loaded = false;
 }

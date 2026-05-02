@@ -34,3 +34,10 @@ export const getOverviewSchema = z.object({
   }),
   params: z.object({}).default({})
 });
+
+export const detectConflictsSchema = z.object({
+  body: emptyBody,
+  query: z.object({}).default({}),
+  params: z.object({}).default({})
+});
+

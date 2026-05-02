@@ -71,7 +71,10 @@ type AppDeps = {
     | "deleteClassroom"
     | "updateClassroomAvailability"
   >;
-  schedulingService?: Pick<SchedulingService, "getManualContext" | "saveManualAssignment" | "getOverview">;
+  schedulingService?: Pick<
+    SchedulingService,
+    "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts"
+  >;
   dashboardService?: Pick<DashboardService, "getSummary">;
 };
 

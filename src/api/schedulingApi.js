@@ -65,3 +65,8 @@ export function saveManualAssignment(sectionId, data) {
     body: JSON.stringify(data)
   });
 }
+
+export function getConflicts() {
+  return request("/scheduling/conflicts");
+}
+

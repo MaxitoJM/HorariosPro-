@@ -11,6 +11,7 @@ import { setupDocentesScreen } from '../views/docentesController.js';
 import { setupFranjasScreen } from '../views/franjasController.js';
 import { setupHorariosScreen } from '../views/horariosController.js';
 import { setupAsignacionScreen } from '../views/asignacionController.js';
+import { setupConflictosScreen } from '../views/conflictosController.js';
 
 const ROLE_ALLOWED_SCREENS = {
   admin: screens,
@@ -89,6 +90,10 @@ export async function renderApp() {
 
   if (state.currentScreen === 'franjas') {
     setupFranjasScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'conflictos') {
+    setupConflictosScreen(renderApp);
   }
 
   screens.forEach((screen) => {
