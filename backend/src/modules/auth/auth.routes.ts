@@ -31,7 +31,7 @@ function setRefreshCookie(res: any, token: string, expiresAt: Date) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: env.COOKIE_SECURE,
-    sameSite: "lax",
+    sameSite: env.COOKIE_SAMESITE,
     expires: expiresAt
   });
 }
@@ -40,7 +40,7 @@ function clearRefreshCookie(res: any) {
   res.clearCookie(COOKIE_NAME, {
     httpOnly: true,
     secure: env.COOKIE_SECURE,
-    sameSite: "lax"
+    sameSite: env.COOKIE_SAMESITE
   });
 }
 

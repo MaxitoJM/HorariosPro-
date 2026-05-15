@@ -7,6 +7,8 @@ import { renderFranjas } from './franjas.js';
 import { renderAsignacion } from './asignacion.js';
 import { renderHorarios } from './horarios.js';
 import { renderConflictos } from './conflictos.js';
+import { renderReportes } from './reportes.js';
+import { renderUsuarios } from './usuarios.js';
 
 export function renderScreen() {
   switch (state.currentScreen) {
@@ -26,6 +28,10 @@ export function renderScreen() {
       return renderHorarios();
     case 'conflictos':
       return renderConflictos();
+    case 'reportes':
+      return renderReportes();
+    case 'usuarios':
+      return renderUsuarios();
     default:
       return renderDashboard();
   }

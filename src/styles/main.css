@@ -100,3 +100,24 @@
         .animate-shake {
             animation: shake 0.5s;
         }
+        @media print {
+            aside,
+            .report-controls,
+            #logoutBtn {
+                display: none !important;
+            }
+
+            main {
+                overflow: visible !important;
+            }
+
+            .report-print-area {
+                padding: 0 !important;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid #e5e7eb;
+                break-inside: avoid;
+            }
+        }
