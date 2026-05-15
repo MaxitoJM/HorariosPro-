@@ -67,7 +67,7 @@ export function schedulingRouter(service?: SchedulingServiceLike) {
     }
   );
 
-  // HU-20 / HU-30: conflict detection
+  // HU-20: conflict detection
   router.get("/conflicts", validate(detectConflictsSchema), async (_req, res, next) => {
     try {
       const data = await schedulingService.detectConflicts();
