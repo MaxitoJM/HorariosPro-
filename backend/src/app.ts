@@ -13,11 +13,15 @@ import { CoursesService } from "./modules/courses/courses.service.js";
 import { coursesRouter } from "./modules/courses/courses.routes.js";
 import { DashboardService } from "./modules/dashboard/dashboard.service.js";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes.js";
+import { enrollmentsRouter } from "./modules/enrollments/enrollments.routes.js";
+import { EnrollmentsService } from "./modules/enrollments/enrollments.service.js";
 import { healthRouter } from "./modules/health/health.routes.js";
 import { scheduleConfigRouter } from "./modules/schedule-config/schedule-config.routes.js";
 import { ScheduleConfigService } from "./modules/schedule-config/schedule-config.service.js";
 import { SchedulingService } from "./modules/scheduling/scheduling.service.js";
 import { schedulingRouter } from "./modules/scheduling/scheduling.routes.js";
+import { studentsRouter } from "./modules/students/students.routes.js";
+import { StudentsService } from "./modules/students/students.service.js";
 import { TeachersService } from "./modules/teachers/teachers.service.js";
 import { teachersRouter } from "./modules/teachers/teachers.routes.js";
 
@@ -76,6 +80,8 @@ type AppDeps = {
     "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts" | "autoGenerate" | "reassignSection"
   >;
   dashboardService?: Pick<DashboardService, "getSummary">;
+  studentsService?: Pick<StudentsService, "listStudents" | "getStudentById" | "createStudent">;
+  enrollmentsService?: Pick<EnrollmentsService, "getEnrollmentContext" | "enroll" | "withdraw">;
 };
 
 export function createApp(deps: AppDeps = {}) {
@@ -108,6 +114,8 @@ export function createApp(deps: AppDeps = {}) {
   app.use("/api/v1/classrooms", classroomsRouter(deps.classroomsService));
   app.use("/api/v1/scheduling", schedulingRouter(deps.schedulingService));
   app.use("/api/v1/dashboard", dashboardRouter(deps.dashboardService));
+  app.use("/api/v1/students", studentsRouter(deps.studentsService));
+  app.use("/api/v1/enrollments", enrollmentsRouter(deps.enrollmentsService));
 
   app.use(notFound);
   app.use(errorHandler);

@@ -12,11 +12,13 @@ import { setupFranjasScreen } from '../views/franjasController.js';
 import { setupHorariosScreen } from '../views/horariosController.js';
 import { setupAsignacionScreen } from '../views/asignacionController.js';
 import { setupConflictosScreen } from '../views/conflictosController.js';
+import { setupEstudiantesScreen } from '../views/estudiantesController.js';
+import { setupInscripcionScreen } from '../views/inscripcionController.js';
 
 const ROLE_ALLOWED_SCREENS = {
-  admin: screens,
+  admin: screens.filter((screen) => screen !== 'inscripcion'),
   profesor: ['horarios', 'dashboard'],
-  estudiante: ['horarios']
+  estudiante: ['inscripcion', 'horarios']
 };
 
 function canAccessScreen(role, screen) {
@@ -94,6 +96,14 @@ export async function renderApp() {
 
   if (state.currentScreen === 'conflictos') {
     setupConflictosScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'estudiantes') {
+    setupEstudiantesScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'inscripcion') {
+    setupInscripcionScreen(renderApp);
   }
 
   screens.forEach((screen) => {

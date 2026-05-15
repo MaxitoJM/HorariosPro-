@@ -183,7 +183,7 @@ export function renderConflictos() {
       <div class="flex justify-between items-center">
         <div>
           <h2 class="text-3xl font-bold text-gray-800">Gestion de Conflictos</h2>
-          <p class="text-gray-500 text-sm mt-1">${scannedAt || 'HU-20/HU-30: Deteccion y notificacion de conflictos en horarios'}</p>
+          <p class="text-gray-500 text-sm mt-1">${scannedAt || 'HU-20: Deteccion y notificacion de conflictos en horarios'}</p>
         </div>
         <div class="flex gap-3">
           <button id="scanConflictsBtn" class="btn-primary flex items-center gap-2">

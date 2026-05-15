@@ -6,7 +6,9 @@
   'franjas',
   'asignacion',
   'horarios',
-  'conflictos'
+  'conflictos',
+  'estudiantes',
+  'inscripcion'
 ];
 
 export const state = {
@@ -65,13 +67,27 @@ export const state = {
     loading: false,
     loaded: false,
     error: null
+  },
+  students: {
+    items: [],
+    draft: null,
+    loading: false,
+    loaded: false,
+    error: null
+  },
+  enrollment: {
+    enrolled: [],
+    availableSections: [],
+    loading: false,
+    loaded: false,
+    error: null
   }
 };
 
 function getInitialScreenByRole(role) {
   if (role === 'admin') return 'dashboard';
   if (role === 'profesor') return 'horarios';
-  return 'horarios';
+  return 'inscripcion';
 }
 
 export function setCurrentScreen(screen) {
@@ -141,6 +157,20 @@ export function logoutUser() {
   };
   state.conflicts = {
     result: null,
+    loading: false,
+    loaded: false,
+    error: null
+  };
+  state.students = {
+    items: [],
+    draft: null,
+    loading: false,
+    loaded: false,
+    error: null
+  };
+  state.enrollment = {
+    enrolled: [],
+    availableSections: [],
     loading: false,
     loaded: false,
     error: null
@@ -344,4 +374,45 @@ export function setConflictsResult(result) {
 
 export function resetConflictsLoaded() {
   state.conflicts.loaded = false;
+}
+
+export function setStudentsLoading(loading) {
+  state.students.loading = loading;
+}
+
+export function setStudentsError(error) {
+  state.students.error = error;
+}
+
+export function setStudentsData(items) {
+  state.students.items = items;
+  state.students.loaded = true;
+  state.students.error = null;
+}
+
+export function setStudentDraft(draft) {
+  state.students.draft = draft;
+}
+
+export function resetStudentsLoaded() {
+  state.students.loaded = false;
+}
+
+export function setEnrollmentLoading(loading) {
+  state.enrollment.loading = loading;
+}
+
+export function setEnrollmentError(error) {
+  state.enrollment.error = error;
+}
+
+export function setEnrollmentData(data) {
+  state.enrollment.enrolled = data.enrolled || [];
+  state.enrollment.availableSections = data.availableSections || [];
+  state.enrollment.loaded = true;
+  state.enrollment.error = null;
+}
+
+export function resetEnrollmentLoaded() {
+  state.enrollment.loaded = false;
 }
