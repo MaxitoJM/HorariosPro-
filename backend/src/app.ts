@@ -14,12 +14,16 @@ import { coursesRouter } from "./modules/courses/courses.routes.js";
 import { DashboardService } from "./modules/dashboard/dashboard.service.js";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes.js";
 import { healthRouter } from "./modules/health/health.routes.js";
+import { reportsRouter } from "./modules/reports/reports.routes.js";
+import { ReportsService } from "./modules/reports/reports.service.js";
 import { scheduleConfigRouter } from "./modules/schedule-config/schedule-config.routes.js";
 import { ScheduleConfigService } from "./modules/schedule-config/schedule-config.service.js";
 import { SchedulingService } from "./modules/scheduling/scheduling.service.js";
 import { schedulingRouter } from "./modules/scheduling/scheduling.routes.js";
 import { TeachersService } from "./modules/teachers/teachers.service.js";
 import { teachersRouter } from "./modules/teachers/teachers.routes.js";
+import { usersRouter } from "./modules/users/users.routes.js";
+import { UsersService } from "./modules/users/users.service.js";
 
 type AppDeps = {
   authService?: Pick<
@@ -76,6 +80,8 @@ type AppDeps = {
     "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts" | "autoGenerate" | "reassignSection"
   >;
   dashboardService?: Pick<DashboardService, "getSummary">;
+  reportsService?: Pick<ReportsService, "getScheduleReport" | "exportScheduleCsv">;
+  usersService?: Pick<UsersService, "listUsers" | "updateUser" | "deleteUser">;
 };
 
 export function createApp(deps: AppDeps = {}) {
@@ -108,6 +114,8 @@ export function createApp(deps: AppDeps = {}) {
   app.use("/api/v1/classrooms", classroomsRouter(deps.classroomsService));
   app.use("/api/v1/scheduling", schedulingRouter(deps.schedulingService));
   app.use("/api/v1/dashboard", dashboardRouter(deps.dashboardService));
+  app.use("/api/v1/reports", reportsRouter(deps.reportsService));
+  app.use("/api/v1/users", usersRouter(deps.usersService));
 
   app.use(notFound);
   app.use(errorHandler);

@@ -6,7 +6,9 @@
   'franjas',
   'asignacion',
   'horarios',
-  'conflictos'
+  'conflictos',
+  'reportes',
+  'usuarios'
 ];
 
 export const state = {
@@ -62,6 +64,27 @@ export const state = {
   },
   conflicts: {
     result: null,
+    loading: false,
+    loaded: false,
+    error: null
+  },
+  reports: {
+    schedule: null,
+    filters: {
+      view: 'all',
+      entityId: '',
+      department: '',
+      includeUnscheduled: true
+    },
+    loading: false,
+    loaded: false,
+    error: null,
+    exporting: false,
+    exportError: null
+  },
+  users: {
+    items: [],
+    draft: null,
     loading: false,
     loaded: false,
     error: null
@@ -141,6 +164,27 @@ export function logoutUser() {
   };
   state.conflicts = {
     result: null,
+    loading: false,
+    loaded: false,
+    error: null
+  };
+  state.reports = {
+    schedule: null,
+    filters: {
+      view: 'all',
+      entityId: '',
+      department: '',
+      includeUnscheduled: true
+    },
+    loading: false,
+    loaded: false,
+    error: null,
+    exporting: false,
+    exportError: null
+  };
+  state.users = {
+    items: [],
+    draft: null,
     loading: false,
     loaded: false,
     error: null
@@ -344,4 +388,59 @@ export function setConflictsResult(result) {
 
 export function resetConflictsLoaded() {
   state.conflicts.loaded = false;
+}
+
+export function setReportsLoading(loading) {
+  state.reports.loading = loading;
+}
+
+export function setReportsError(error) {
+  state.reports.error = error;
+}
+
+export function setReportsData({ schedule }) {
+  state.reports.schedule = schedule;
+  state.reports.loaded = true;
+  state.reports.error = null;
+}
+
+export function setReportsFilters(filters) {
+  state.reports.filters = {
+    ...state.reports.filters,
+    ...filters
+  };
+}
+
+export function resetReportsLoaded() {
+  state.reports.loaded = false;
+}
+
+export function setReportsExporting(exporting) {
+  state.reports.exporting = exporting;
+}
+
+export function setReportsExportError(error) {
+  state.reports.exportError = error;
+}
+
+export function setUsersLoading(loading) {
+  state.users.loading = loading;
+}
+
+export function setUsersError(error) {
+  state.users.error = error;
+}
+
+export function setUsersData(items) {
+  state.users.items = items;
+  state.users.loaded = true;
+  state.users.error = null;
+}
+
+export function setUserDraft(draft) {
+  state.users.draft = draft;
+}
+
+export function resetUsersLoaded() {
+  state.users.loaded = false;
 }
