@@ -14,7 +14,8 @@ async function load(renderApp) {
   setProgramsError(null);
   renderApp();
   try {
-    setProgramsData(await listPrograms({ search: state.programs.search }));
+    const data = await listPrograms({ search: state.programs.search });
+    setProgramsData(data.items ?? data);
   } catch (error) {
     setProgramsError(error.message || "No se pudieron cargar los programas");
   } finally {
