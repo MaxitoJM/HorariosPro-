@@ -1,0 +1,40 @@
+# Render Blueprint para HorariosPro — backend Express + Prisma.
+# Render lee este archivo al conectar el repo: provisiona el servicio,
+# inyecta variables y ejecuta build + start automáticamente.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: horariospro-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    region: oregon
+
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && node dist/server.js
+    healthCheckPath: /api/v1/health/public
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_ACCESS_SECRET
+        generateValue: true # Render genera un secret aleatorio en el primer deploy
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: REFRESH_TOKEN_EXPIRES_DAYS
+        value: "7"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      # Cookies cross-domain entre Vercel (frontend) y Render (backend)
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: none
+      # Estas se setean MANUALMENTE en el dashboard de Render tras desplegar:
+      # CORS_ORIGIN  → https://<tu-app>.vercel.app  (sin barra final)
+      # DATABASE_URL → URL de Neon/Supabase con ?sslmode=require
+      - key: CORS_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
