@@ -1,3 +1,4 @@
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { HttpError } from "../../utils/http-error.js";
 import {
   DEFAULT_ACADEMIC_CONFIG,
@@ -67,7 +68,7 @@ function parseRuleValue(value: string, tipo: SchedulingRuleInput["tipo"]) {
 }
 
 export class ScheduleConfigService {
-  constructor(private readonly prisma: any) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async listTimeSlotGroups() {
     await this.ensureDefaults();
@@ -328,7 +329,7 @@ export class ScheduleConfigService {
     ]);
 
     if (groupCount === 0) {
-      await this.prisma.$transaction(async (tx: any) => {
+      await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const createdGroups = [];
         for (const group of DEFAULT_TIME_SLOT_GROUPS) {
           const created = await tx.timeSlotGroup.create({ data: group });

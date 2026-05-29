@@ -1,10 +1,11 @@
 import { state } from "../core/state.js";
+import { h } from "../core/dom.js";
 
 function renderSectionOptions() {
   const sections = state.courses.items.flatMap((course) =>
     course.sections.map((section) => ({
       id: section.id,
-      label: `${course.codigo} - ${course.nombre} / Seccion ${section.codigoSeccion}`,
+      label: `${h(course.codigo)} - ${h(course.nombre)} / Seccion ${h(section.codigoSeccion)}`,
       hasTeacher: Boolean(section.teacherId)
     }))
   );
@@ -49,7 +50,7 @@ function renderClassroomOptions() {
     '<option value="">Selecciona un aula...</option>',
     ...context.classroomOptions.map(
       (classroom) =>
-        `<option value="${classroom.id}" ${context.section.assignedClassroomId === classroom.id ? "selected" : ""}>${classroom.codigo} - ${classroom.edificio} (cap. ${classroom.capacidad})</option>`
+        `<option value="${classroom.id}" ${context.section.assignedClassroomId === classroom.id ? "selected" : ""}>${h(classroom.codigo)} - ${h(classroom.edificio)} (cap. ${classroom.capacidad})</option>`
     )
   ].join("");
 }
@@ -162,8 +163,8 @@ export function renderAsignacion() {
           ${
             context
               ? `<div class="mt-4 p-4 rounded-xl bg-blue-50">
-                  <p class="font-semibold text-gray-900">${context.section.course.codigo} - ${context.section.course.nombre}</p>
-                  <p class="text-sm text-gray-600 mt-1">Seccion ${context.section.codigoSeccion} / ${context.section.teacher.nombre} ${context.section.teacher.apellido}</p>
+                  <p class="font-semibold text-gray-900">${h(context.section.course.codigo)} - ${h(context.section.course.nombre)}</p>
+                  <p class="text-sm text-gray-600 mt-1">Seccion ${h(context.section.codigoSeccion)} / ${h(context.section.teacher.nombre)} ${h(context.section.teacher.apellido)}</p>
                   <p class="text-sm text-gray-600">Sesiones requeridas: ${context.requiredSessions}</p>
                 </div>`
               : ""

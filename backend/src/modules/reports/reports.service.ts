@@ -1,3 +1,6 @@
+import type { PrismaClient } from "@prisma/client";
+import { DAY_ORDER, parseTimeToMinutes } from "../../utils/time.js";
+
 type ScheduleView = "all" | "teacher" | "classroom" | "course";
 
 type ScheduleReportFilters = {
@@ -7,13 +10,7 @@ type ScheduleReportFilters = {
   department?: string;
 };
 
-const DAY_ORDER = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
 const REPORT_DAYS = DAY_ORDER.slice(0, 6);
-
-function parseTimeToMinutes(value: string): number {
-  const [hours = 0, minutes = 0] = value.split(":").map(Number);
-  return hours * 60 + minutes;
-}
 
 function round(value: number): number {
   return Math.round(value * 100) / 100;
@@ -33,7 +30,7 @@ function buildCsv(rows: unknown[][]): string {
 }
 
 export class ReportsService {
-  constructor(private readonly prisma: any) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async getScheduleReport(filters: ScheduleReportFilters) {
     const sectionWhere = this.buildSectionWhere(filters);

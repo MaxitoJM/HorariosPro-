@@ -1,5 +1,7 @@
+import type { PrismaClient } from "@prisma/client";
+
 export class DashboardService {
-  constructor(private readonly prisma: any) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async getSummary() {
     const [teachers, courses, classrooms, scheduledSections, meetings, recentAuditLogs] = await Promise.all([

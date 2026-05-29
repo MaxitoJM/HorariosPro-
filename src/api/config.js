@@ -25,7 +25,7 @@ function resolveApiBaseUrl() {
   }
 
   const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") {
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
     return LOCAL_API_URL;
   }
 

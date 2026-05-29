@@ -1,4 +1,5 @@
 import { state } from "../core/state.js";
+import { h } from "../core/dom.js";
 
 const ROLE_LABELS = {
   admin: "Administrador",
@@ -16,8 +17,8 @@ function renderUserRows() {
       (user) => `
         <tr class="hover:bg-gray-50 ${user.activo ? "" : "bg-gray-50 text-gray-500"}">
           <td class="px-6 py-4">
-            <p class="font-semibold text-gray-800">${user.nombre} ${user.apellido}</p>
-            <p class="text-sm text-gray-500">${user.email}</p>
+            <p class="font-semibold text-gray-800">${h(user.nombre)} ${h(user.apellido)}</p>
+            <p class="text-sm text-gray-500">${h(user.email)}</p>
           </td>
           <td class="px-6 py-4">${ROLE_LABELS[user.rol] || user.rol}</td>
           <td class="px-6 py-4">${user.activo ? "Activo" : "Inactivo"}</td>
