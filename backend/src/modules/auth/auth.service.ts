@@ -66,7 +66,8 @@ export class AuthService {
 
   async login(input: LoginInput, meta: RequestMeta) {
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
-    if (!user || !user.activo) {
+    // No revelar existencia: usuario inexistente, inactivo o soft-deleted -> credenciales invalidas.
+    if (!user || !user.activo || user.deletedAt) {
       throw new HttpError(401, "Credenciales invalidas", "INVALID_CREDENTIALS");
     }
 
@@ -74,6 +75,8 @@ export class AuthService {
     if (!valid) {
       throw new HttpError(401, "Credenciales invalidas", "INVALID_CREDENTIALS");
     }
+
+    await this.assertAccountUsable(user);
 
     await this.createAuditLog(user.id, "auth.login", meta);
     const session = await this.issueSession(user.id, user.email, user.rol as Role, meta);
@@ -91,9 +94,18 @@ export class AuthService {
       include: { user: true }
     });
 
-    if (!tokenRecord || tokenRecord.revokedAt || tokenRecord.expiresAt < new Date() || !tokenRecord.user.activo) {
+    if (
+      !tokenRecord ||
+      tokenRecord.revokedAt ||
+      tokenRecord.expiresAt < new Date() ||
+      !tokenRecord.user.activo ||
+      tokenRecord.user.deletedAt
+    ) {
       throw new HttpError(401, "Refresh token invalido", "INVALID_REFRESH_TOKEN");
     }
+
+    // Enforcement de estado: cuenta bloqueada/suspendida no puede renovar sesion.
+    await this.assertAccountUsable(tokenRecord.user);
 
     await this.prisma.refreshToken.update({
       where: { id: tokenRecord.id },
@@ -219,11 +231,41 @@ export class AuthService {
 
   async me(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.activo) {
+    if (!user || !user.activo || user.deletedAt) {
       throw new HttpError(404, "Usuario no encontrado", "USER_NOT_FOUND");
     }
 
+    // Access token de hasta 15min puede sobrevivir a un bloqueo; aqui cortamos.
+    await this.assertAccountUsable(user);
+
     return this.toPublicUser(user);
+  }
+
+  // Enforcement central de estado de cuenta:
+  // - Auto-expira bloqueos temporales vencidos (blockedUntil <= ahora) volviendo a 'active'.
+  // - Rechaza cuentas bloqueadas/suspendidas con 403.
+  private async assertAccountUsable(user: {
+    id: string;
+    status: "active" | "suspended" | "blocked";
+    blockedUntil: Date | null;
+    blockReason: string | null;
+  }) {
+    let status = user.status;
+
+    if (status === "blocked" && user.blockedUntil && user.blockedUntil <= new Date()) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { status: "active", blockedUntil: null, blockReason: null }
+      });
+      status = "active";
+    }
+
+    if (status === "blocked") {
+      throw new HttpError(403, user.blockReason ?? "Tu cuenta esta bloqueada", "USER_BLOCKED");
+    }
+    if (status === "suspended") {
+      throw new HttpError(403, "Tu cuenta esta suspendida", "USER_SUSPENDED");
+    }
   }
 
   private async issueSession(userId: string, email: string, rol: Role, meta: RequestMeta) {

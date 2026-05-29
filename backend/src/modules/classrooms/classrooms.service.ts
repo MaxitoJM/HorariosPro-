@@ -1,3 +1,5 @@
+import type { Prisma, PrismaClient } from "@prisma/client";
+import { audit } from "../../utils/audit.js";
 import { HttpError } from "../../utils/http-error.js";
 
 type RequestMeta = {
@@ -29,12 +31,13 @@ function parseTimeToMinutes(value: string) {
 }
 
 export class ClassroomsService {
-  constructor(private readonly prisma: any) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async listClassrooms() {
     const items = await this.prisma.classroom.findMany({
       include: {
         sections: {
+          where: { deletedAt: null },
           include: {
             course: true
           },
@@ -55,6 +58,7 @@ export class ClassroomsService {
       where: { id },
       include: {
         sections: {
+          where: { deletedAt: null },
           include: {
             course: true
           },
@@ -88,6 +92,7 @@ export class ClassroomsService {
       },
       include: {
         sections: {
+          where: { deletedAt: null },
           include: { course: true }
         },
         availabilities: true
@@ -115,6 +120,7 @@ export class ClassroomsService {
       },
       include: {
         sections: {
+          where: { deletedAt: null },
           include: { course: true }
         },
         availabilities: {
@@ -130,23 +136,85 @@ export class ClassroomsService {
   async deleteClassroom(id: string, meta: RequestMeta) {
     const classroom = await this.requireClassroom(id);
 
+    if (classroom.deletedAt) {
+      throw new HttpError(409, "El aula ya fue eliminada", "CLASSROOM_ALREADY_DELETED");
+    }
+
     if (classroom.sections.length > 0) {
       throw new HttpError(
         409,
-        "No puedes eliminar un aula que ya esta asociada a secciones. Reasigna o elimina esas secciones primero.",
+        `El aula esta asignada a ${classroom.sections.length} seccion(es). Reasigne las secciones antes de eliminar.`,
         "CLASSROOM_HAS_SECTIONS"
       );
     }
 
-    await this.prisma.classroom.delete({ where: { id } });
-    await this.createAuditLog(meta.userId ?? null, "classrooms.delete", meta, { classroomId: id });
+    const meetings = await this.prisma.sectionScheduleMeeting.count({
+      where: { classroomId: id }
+    });
+    if (meetings > 0) {
+      throw new HttpError(
+        409,
+        `El aula tiene ${meetings} reunion(es) programada(s). Reasigne el horario antes de eliminar.`,
+        "CLASSROOM_HAS_SCHEDULE"
+      );
+    }
+
+    const now = new Date();
+    await this.prisma.classroom.update({
+      where: { id },
+      data: { deletedAt: now, deletedBy: meta.userId ?? null }
+    });
+
+    await audit(this.prisma, meta, {
+      action: "classrooms.softDelete",
+      entityType: "classroom",
+      entityId: id,
+      before: { id, codigo: classroom.codigo, edificio: classroom.edificio, activo: classroom.activo },
+      after: { id, deletedAt: now.toISOString(), deletedBy: meta.userId ?? null }
+    });
+  }
+
+  async restoreClassroom(id: string, meta: RequestMeta) {
+    const existing = await this.prisma.classroom.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpError(404, "Aula no encontrada", "CLASSROOM_NOT_FOUND");
+    }
+    if (!existing.deletedAt) {
+      throw new HttpError(409, "El aula no esta eliminada", "CLASSROOM_NOT_DELETED");
+    }
+
+    const conflict = await this.prisma.classroom.findFirst({
+      where: { codigo: existing.codigo, id: { not: id } }
+    });
+    if (conflict) {
+      throw new HttpError(
+        409,
+        "Otra aula activa ya usa este codigo. Cambielo antes de restaurar.",
+        "CODIGO_CONFLICT_ON_RESTORE"
+      );
+    }
+
+    await this.prisma.classroom.update({
+      where: { id },
+      data: { deletedAt: null, deletedBy: null }
+    });
+
+    await audit(this.prisma, meta, {
+      action: "classrooms.restore",
+      entityType: "classroom",
+      entityId: id,
+      before: { id, deletedAt: existing.deletedAt.toISOString(), deletedBy: existing.deletedBy ?? null },
+      after: { id, deletedAt: null, deletedBy: null }
+    });
+
+    return this.getClassroomById(id);
   }
 
   async updateClassroomAvailability(id: string, availability: AvailabilityInput[], meta: RequestMeta) {
     await this.requireClassroom(id);
     this.validateAvailability(availability);
 
-    await this.prisma.$transaction(async (tx: any) => {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.classroomAvailability.deleteMany({ where: { classroomId: id } });
 
       if (availability.length > 0) {
@@ -170,7 +238,7 @@ export class ClassroomsService {
     const item = await this.prisma.classroom.findUnique({
       where: { id },
       include: {
-        sections: true
+        sections: { where: { deletedAt: null } }
       }
     });
 
@@ -182,14 +250,9 @@ export class ClassroomsService {
   }
 
   private async ensureUniqueCode(codigo: string, excludeId?: string) {
-    const existing = await this.prisma.classroom.findFirst({
-      where: {
-        codigo,
-        ...(excludeId ? { id: { not: excludeId } } : {})
-      }
-    });
-
-    if (existing) {
+    // findUnique ve soft-deleted (constraint global). Ver nota en teachers.service.
+    const existing = await this.prisma.classroom.findUnique({ where: { codigo } });
+    if (existing && existing.id !== excludeId) {
       throw new HttpError(409, "Ya existe un aula con ese codigo", "CLASSROOM_CODE_TAKEN");
     }
   }
