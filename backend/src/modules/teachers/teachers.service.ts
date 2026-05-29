@@ -1,3 +1,6 @@
+import type { Prisma, PrismaClient } from "@prisma/client";
+import { parseTimeToMinutes } from "../../utils/time.js";
+import { audit } from "../../utils/audit.js";
 import { HttpError } from "../../utils/http-error.js";
 
 type RequestMeta = {
@@ -29,13 +32,8 @@ type AssignableCourseInput = {
   activo?: boolean;
 };
 
-function parseTimeToMinutes(value: string) {
-  const [hours = 0, minutes = 0] = value.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
 export class TeachersService {
-  constructor(private readonly prisma: any) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async listTeachers() {
     const teachers = await this.prisma.teacher.findMany({
@@ -131,15 +129,78 @@ export class TeachersService {
       throw new HttpError(404, "Docente no encontrado", "TEACHER_NOT_FOUND");
     }
 
-    await this.prisma.teacher.delete({ where: { id } });
-    await this.createAuditLog(meta.userId ?? null, "teachers.delete", meta, { teacherId: id });
+    if (existing.deletedAt) {
+      throw new HttpError(409, "El docente ya fue eliminado", "TEACHER_ALREADY_DELETED");
+    }
+
+    // Bloqueo: docente con secciones activas (no borradas) asignadas
+    const activeSections = await this.prisma.courseSection.count({
+      where: { teacherId: id }
+    });
+    if (activeSections > 0) {
+      throw new HttpError(
+        409,
+        `El docente tiene ${activeSections} seccion(es) activa(s) asignada(s). Reasigne las secciones antes de eliminar.`,
+        "TEACHER_HAS_SECTIONS"
+      );
+    }
+
+    const now = new Date();
+    await this.prisma.teacher.update({
+      where: { id },
+      data: { deletedAt: now, deletedBy: meta.userId ?? null }
+    });
+
+    await audit(this.prisma, meta, {
+      action: "teachers.softDelete",
+      entityType: "teacher",
+      entityId: id,
+      before: { id, email: existing.email, departamento: existing.departamento, activo: existing.activo },
+      after: { id, deletedAt: now.toISOString(), deletedBy: meta.userId ?? null }
+    });
+  }
+
+  async restoreTeacher(id: string, meta: RequestMeta) {
+    const existing = await this.prisma.teacher.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpError(404, "Docente no encontrado", "TEACHER_NOT_FOUND");
+    }
+    if (!existing.deletedAt) {
+      throw new HttpError(409, "El docente no esta eliminado", "TEACHER_NOT_DELETED");
+    }
+
+    const conflict = await this.prisma.teacher.findFirst({
+      where: { email: existing.email, id: { not: id } }
+    });
+    if (conflict) {
+      throw new HttpError(
+        409,
+        "Otro docente activo ya usa este email. Cambielo antes de restaurar.",
+        "EMAIL_CONFLICT_ON_RESTORE"
+      );
+    }
+
+    await this.prisma.teacher.update({
+      where: { id },
+      data: { deletedAt: null, deletedBy: null }
+    });
+
+    await audit(this.prisma, meta, {
+      action: "teachers.restore",
+      entityType: "teacher",
+      entityId: id,
+      before: { id, deletedAt: existing.deletedAt.toISOString(), deletedBy: existing.deletedBy ?? null },
+      after: { id, deletedAt: null, deletedBy: null }
+    });
+
+    return this.getTeacherById(id);
   }
 
   async updateTeacherAvailability(id: string, availability: AvailabilityInput[], meta: RequestMeta) {
     await this.requireTeacher(id);
     this.validateAvailability(availability);
 
-    await this.prisma.$transaction(async (tx: any) => {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.teacherAvailability.deleteMany({ where: { teacherId: id } });
 
       if (availability.length > 0) {
@@ -163,7 +224,7 @@ export class TeachersService {
     await this.requireTeacher(id);
     this.validateAssignableCourses(courses);
 
-    await this.prisma.$transaction(async (tx: any) => {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.teacherAssignableCourse.deleteMany({ where: { teacherId: id } });
 
       if (courses.length > 0) {
@@ -192,14 +253,12 @@ export class TeachersService {
   }
 
   private async ensureUniqueTeacherEmail(email: string, excludeId?: string) {
-    const existing = await this.prisma.teacher.findFirst({
-      where: {
-        email,
-        ...(excludeId ? { id: { not: excludeId } } : {})
-      }
-    });
-
-    if (existing) {
+    // findUnique NO es interceptado por la soft-delete extension: ve registros
+    // borrados. Necesario porque el constraint @unique de la DB es global
+    // (incluye soft-deleted). Si usaramos findFirst, un email de un docente
+    // borrado pareceria libre y el INSERT chocaria con P2002 -> 500.
+    const existing = await this.prisma.teacher.findUnique({ where: { email } });
+    if (existing && existing.id !== excludeId) {
       throw new HttpError(409, "Ya existe un docente con ese email", "TEACHER_EMAIL_TAKEN");
     }
   }

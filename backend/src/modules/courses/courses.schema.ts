@@ -53,6 +53,12 @@ export const deleteCourseSchema = z.object({
   params: idParams
 });
 
+export const restoreCourseSchema = z.object({
+  body: emptyBody,
+  query: emptyQuery,
+  params: idParams
+});
+
 export const createSectionSchema = z.object({
   body: z.object({
     codigoSeccion: z.string().trim().min(1).max(20).toUpperCase(),
@@ -82,6 +88,12 @@ export const updateSectionSchema = z.object({
 });
 
 export const deleteSectionSchema = z.object({
+  body: emptyBody,
+  query: emptyQuery,
+  params: sectionParams
+});
+
+export const restoreSectionSchema = z.object({
   body: emptyBody,
   query: emptyQuery,
   params: sectionParams

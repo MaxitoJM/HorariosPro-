@@ -19,7 +19,8 @@ export const listUsersSchema = z.object({
   query: z.object({
     rol: z.enum(ROLE_VALUES).optional(),
     search: z.string().trim().optional(),
-    includeInactive: booleanQuery
+    includeInactive: booleanQuery,
+    deleted: booleanQuery
   }),
   params: z.object({}).default({})
 });
@@ -39,6 +40,29 @@ export const updateUserSchema = z.object({
 });
 
 export const deleteUserSchema = z.object({
+  body: z.object({}).default({}),
+  query: z.object({}).default({}),
+  params: z.object({ id: z.string().min(1) })
+});
+
+export const restoreUserSchema = z.object({
+  body: z.object({}).default({}),
+  query: z.object({}).default({}),
+  params: z.object({ id: z.string().min(1) })
+});
+
+export const blockUserSchema = z.object({
+  body: z
+    .object({
+      reason: z.string().trim().min(1).max(500).optional(),
+      until: z.string().datetime().optional()
+    })
+    .default({}),
+  query: z.object({}).default({}),
+  params: z.object({ id: z.string().min(1) })
+});
+
+export const unblockUserSchema = z.object({
   body: z.object({}).default({}),
   query: z.object({}).default({}),
   params: z.object({ id: z.string().min(1) })

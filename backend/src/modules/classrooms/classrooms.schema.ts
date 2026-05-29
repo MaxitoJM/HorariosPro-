@@ -54,6 +54,12 @@ export const deleteClassroomSchema = z.object({
   params: idParams
 });
 
+export const restoreClassroomSchema = z.object({
+  body: emptyBody,
+  query: emptyQuery,
+  params: idParams
+});
+
 export const updateClassroomAvailabilitySchema = z.object({
   body: z.object({
     availability: z.array(

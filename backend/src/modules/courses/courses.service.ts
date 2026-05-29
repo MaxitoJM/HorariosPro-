@@ -1,3 +1,5 @@
+import type { PrismaClient } from "@prisma/client";
+import { audit } from "../../utils/audit.js";
 import { HttpError } from "../../utils/http-error.js";
 
 type RequestMeta = {
@@ -27,12 +29,13 @@ type SectionInput = {
 };
 
 export class CoursesService {
-  constructor(private readonly prisma: any) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async listCourses() {
     const items = await this.prisma.course.findMany({
       include: {
         sections: {
+          where: { deletedAt: null },
           include: {
             teacher: true,
             classroom: true
@@ -51,6 +54,7 @@ export class CoursesService {
       where: { id },
       include: {
         sections: {
+          where: { deletedAt: null },
           include: {
             teacher: true,
             classroom: true
@@ -82,6 +86,7 @@ export class CoursesService {
       },
       include: {
         sections: {
+          where: { deletedAt: null },
           include: {
             teacher: true,
             classroom: true
@@ -111,6 +116,7 @@ export class CoursesService {
       },
       include: {
         sections: {
+          where: { deletedAt: null },
           include: {
             teacher: true,
             classroom: true
@@ -125,9 +131,88 @@ export class CoursesService {
   }
 
   async deleteCourse(id: string, meta: RequestMeta) {
-    await this.requireCourse(id);
-    await this.prisma.course.delete({ where: { id } });
-    await this.createAuditLog(meta.userId ?? null, "courses.delete", meta, { courseId: id });
+    const existing = await this.requireCourse(id);
+
+    if (existing.deletedAt) {
+      throw new HttpError(409, "El curso ya fue eliminado", "COURSE_ALREADY_DELETED");
+    }
+
+    // Bloqueo: curso con secciones activas (sin borrar). Incluye programadas o con inscritos.
+    // Contamos inscripciones reales (estado=inscrito) en vez de confiar en el cache `inscritos`.
+    const activeSections = await this.prisma.courseSection.findMany({
+      where: { courseId: id },
+      select: {
+        id: true,
+        _count: { select: { scheduleMeetings: true, enrollments: { where: { estado: "inscrito" } } } }
+      }
+    });
+
+    if (activeSections.length > 0) {
+      const programmed = activeSections.filter((s) => s._count.scheduleMeetings > 0).length;
+      const enrolled = activeSections.filter((s) => s._count.enrollments > 0).length;
+      if (programmed > 0 || enrolled > 0) {
+        throw new HttpError(
+          409,
+          `El curso tiene ${activeSections.length} seccion(es) activa(s) (${programmed} programadas, ${enrolled} con inscritos). Reasigne o elimine las secciones primero.`,
+          "COURSE_HAS_DEPENDENCIES"
+        );
+      }
+      throw new HttpError(
+        409,
+        `El curso tiene ${activeSections.length} seccion(es) activa(s). Elimine las secciones primero.`,
+        "COURSE_HAS_SECTIONS"
+      );
+    }
+
+    const now = new Date();
+    await this.prisma.course.update({
+      where: { id },
+      data: { deletedAt: now, deletedBy: meta.userId ?? null }
+    });
+
+    await audit(this.prisma, meta, {
+      action: "courses.softDelete",
+      entityType: "course",
+      entityId: id,
+      before: { id, codigo: existing.codigo, nombre: existing.nombre, activo: existing.activo },
+      after: { id, deletedAt: now.toISOString(), deletedBy: meta.userId ?? null }
+    });
+  }
+
+  async restoreCourse(id: string, meta: RequestMeta) {
+    const existing = await this.prisma.course.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpError(404, "Curso no encontrado", "COURSE_NOT_FOUND");
+    }
+    if (!existing.deletedAt) {
+      throw new HttpError(409, "El curso no esta eliminado", "COURSE_NOT_DELETED");
+    }
+
+    const conflict = await this.prisma.course.findFirst({
+      where: { codigo: existing.codigo, id: { not: id } }
+    });
+    if (conflict) {
+      throw new HttpError(
+        409,
+        "Otro curso activo ya usa este codigo. Cambielo antes de restaurar.",
+        "CODIGO_CONFLICT_ON_RESTORE"
+      );
+    }
+
+    await this.prisma.course.update({
+      where: { id },
+      data: { deletedAt: null, deletedBy: null }
+    });
+
+    await audit(this.prisma, meta, {
+      action: "courses.restore",
+      entityType: "course",
+      entityId: id,
+      before: { id, deletedAt: existing.deletedAt.toISOString(), deletedBy: existing.deletedBy ?? null },
+      after: { id, deletedAt: null, deletedBy: null }
+    });
+
+    return this.getCourseById(id);
   }
 
   async createSection(courseId: string, input: SectionInput, meta: RequestMeta) {
@@ -201,9 +286,9 @@ export class CoursesService {
     await this.requireCourse(courseId);
 
     const existing = await this.prisma.courseSection.findFirst({
-      where: {
-        id: sectionId,
-        courseId
+      where: { id: sectionId, courseId },
+      include: {
+        _count: { select: { scheduleMeetings: true, enrollments: { where: { estado: "inscrito" } } } }
       }
     });
 
@@ -211,11 +296,91 @@ export class CoursesService {
       throw new HttpError(404, "Seccion no encontrada", "SECTION_NOT_FOUND");
     }
 
-    await this.prisma.courseSection.delete({ where: { id: sectionId } });
-    await this.createAuditLog(meta.userId ?? null, "courses.sections.delete", meta, {
-      courseId,
-      sectionId
+    if (existing.deletedAt) {
+      throw new HttpError(409, "La seccion ya fue eliminada", "SECTION_ALREADY_DELETED");
+    }
+
+    if (existing._count.scheduleMeetings > 0) {
+      throw new HttpError(
+        409,
+        `La seccion tiene ${existing._count.scheduleMeetings} reunion(es) programada(s). Use 'reasignar' o limpie el horario antes de eliminar.`,
+        "SECTION_HAS_SCHEDULE"
+      );
+    }
+
+    if (existing._count.enrollments > 0) {
+      throw new HttpError(
+        409,
+        `La seccion tiene ${existing._count.enrollments} estudiante(s) inscrito(s). No puede eliminarse.`,
+        "SECTION_HAS_ENROLLMENTS"
+      );
+    }
+
+    const now = new Date();
+    await this.prisma.courseSection.update({
+      where: { id: sectionId },
+      data: { deletedAt: now, deletedBy: meta.userId ?? null }
     });
+
+    await audit(this.prisma, meta, {
+      action: "courses.sections.softDelete",
+      entityType: "courseSection",
+      entityId: sectionId,
+      before: { id: sectionId, codigoSeccion: existing.codigoSeccion, courseId, activo: existing.activo },
+      after: { id: sectionId, deletedAt: now.toISOString(), deletedBy: meta.userId ?? null }
+    });
+  }
+
+  async restoreSection(courseId: string, sectionId: string, meta: RequestMeta) {
+    const course = await this.requireCourse(courseId);
+    // No se puede restaurar una seccion bajo un curso borrado: quedaria activa
+    // colgando de un padre invisible. Restaurar el curso primero.
+    if (course.deletedAt) {
+      throw new HttpError(
+        409,
+        "El curso esta eliminado. Restaure el curso antes de restaurar la seccion.",
+        "PARENT_COURSE_DELETED"
+      );
+    }
+    // findUnique no es interceptado por la soft-delete extension → ve registros borrados.
+    const existing = await this.prisma.courseSection.findUnique({ where: { id: sectionId } });
+    if (!existing || existing.courseId !== courseId) {
+      throw new HttpError(404, "Seccion no encontrada", "SECTION_NOT_FOUND");
+    }
+    if (!existing.deletedAt) {
+      throw new HttpError(409, "La seccion no esta eliminada", "SECTION_NOT_DELETED");
+    }
+
+    // codigoSeccion debe ser único dentro del courseId entre secciones no borradas
+    const conflict = await this.prisma.courseSection.findFirst({
+      where: { courseId, codigoSeccion: existing.codigoSeccion, id: { not: sectionId } }
+    });
+    if (conflict) {
+      throw new HttpError(
+        409,
+        "Otra seccion activa del curso ya usa este codigo.",
+        "SECTION_CODIGO_CONFLICT_ON_RESTORE"
+      );
+    }
+
+    await this.prisma.courseSection.update({
+      where: { id: sectionId },
+      data: { deletedAt: null, deletedBy: null }
+    });
+
+    await audit(this.prisma, meta, {
+      action: "courses.sections.restore",
+      entityType: "courseSection",
+      entityId: sectionId,
+      before: { id: sectionId, deletedAt: existing.deletedAt.toISOString(), deletedBy: existing.deletedBy ?? null },
+      after: { id: sectionId, deletedAt: null, deletedBy: null }
+    });
+
+    const restored = await this.prisma.courseSection.findFirst({
+      where: { id: sectionId },
+      include: { teacher: true, classroom: true }
+    });
+    return restored ? this.toSectionSummary(restored) : null;
   }
 
   private async requireCourse(id: string) {
@@ -228,14 +393,9 @@ export class CoursesService {
   }
 
   private async ensureUniqueCourseCode(codigo: string, excludeId?: string) {
-    const existing = await this.prisma.course.findFirst({
-      where: {
-        codigo,
-        ...(excludeId ? { id: { not: excludeId } } : {})
-      }
-    });
-
-    if (existing) {
+    // findUnique ve soft-deleted (constraint global). Ver nota en teachers.service.
+    const existing = await this.prisma.course.findUnique({ where: { codigo } });
+    if (existing && existing.id !== excludeId) {
       throw new HttpError(409, "Ya existe un curso con ese codigo", "COURSE_CODE_TAKEN");
     }
   }
@@ -245,15 +405,12 @@ export class CoursesService {
       throw new HttpError(400, "Los inscritos no pueden superar la capacidad de la seccion", "SECTION_ENROLLMENT_EXCEEDS_CAPACITY");
     }
 
-    const duplicatedCode = await this.prisma.courseSection.findFirst({
-      where: {
-        courseId,
-        codigoSeccion: input.codigoSeccion,
-        ...(excludeSectionId ? { id: { not: excludeSectionId } } : {})
-      }
+    // findUnique sobre el constraint compuesto ve soft-deleted (constraint global).
+    const duplicatedCode = await this.prisma.courseSection.findUnique({
+      where: { courseId_codigoSeccion: { courseId, codigoSeccion: input.codigoSeccion } }
     });
 
-    if (duplicatedCode) {
+    if (duplicatedCode && duplicatedCode.id !== excludeSectionId) {
       throw new HttpError(409, "Ya existe una seccion con ese codigo para el curso", "SECTION_CODE_TAKEN");
     }
 

@@ -3,10 +3,20 @@ import { prisma } from "../../database/prisma.js";
 import { authenticate, type AuthenticatedRequest } from "../../middlewares/authenticate.js";
 import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
-import { deleteUserSchema, listUsersSchema, updateUserSchema } from "./users.schema.js";
+import {
+  blockUserSchema,
+  deleteUserSchema,
+  listUsersSchema,
+  restoreUserSchema,
+  unblockUserSchema,
+  updateUserSchema
+} from "./users.schema.js";
 import { UsersService } from "./users.service.js";
 
-type UsersServiceLike = Pick<UsersService, "listUsers" | "updateUser" | "deleteUser">;
+type UsersServiceLike = Pick<
+  UsersService,
+  "listUsers" | "updateUser" | "deleteUser" | "restoreUser" | "blockUser" | "unblockUser"
+>;
 
 function getRequestMeta(req: AuthenticatedRequest) {
   return {
@@ -44,6 +54,33 @@ export function usersRouter(service?: UsersServiceLike) {
     try {
       await usersService.deleteUser(String(req.params.id), getRequestMeta(req));
       return res.status(200).json({ success: true, data: { message: "Usuario eliminado correctamente" } });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post("/:id/restore", validate(restoreUserSchema), async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const item = await usersService.restoreUser(String(req.params.id), getRequestMeta(req));
+      return res.status(200).json({ success: true, data: { item } });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post("/:id/block", validate(blockUserSchema), async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const item = await usersService.blockUser(String(req.params.id), req.body, getRequestMeta(req));
+      return res.status(200).json({ success: true, data: { item } });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post("/:id/unblock", validate(unblockUserSchema), async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const item = await usersService.unblockUser(String(req.params.id), getRequestMeta(req));
+      return res.status(200).json({ success: true, data: { item } });
     } catch (error) {
       return next(error);
     }

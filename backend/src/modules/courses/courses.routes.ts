@@ -10,6 +10,8 @@ import {
   deleteCourseSchema,
   deleteSectionSchema,
   listCoursesSchema,
+  restoreCourseSchema,
+  restoreSectionSchema,
   updateCourseSchema,
   updateSectionSchema
 } from "./courses.schema.js";
@@ -22,9 +24,11 @@ type CoursesServiceLike = Pick<
   | "createCourse"
   | "updateCourse"
   | "deleteCourse"
+  | "restoreCourse"
   | "createSection"
   | "updateSection"
   | "deleteSection"
+  | "restoreSection"
 >;
 
 function getRequestMeta(req: AuthenticatedRequest) {
@@ -86,6 +90,15 @@ export function coursesRouter(service?: CoursesServiceLike) {
     }
   });
 
+  router.post("/:id/restore", validate(restoreCourseSchema), async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const item = await coursesService.restoreCourse(String(req.params.id), getRequestMeta(req));
+      return res.status(200).json({ success: true, data: { item } });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
   router.post("/:id/sections", validate(createSectionSchema), async (req: AuthenticatedRequest, res, next) => {
     try {
       const item = await coursesService.createSection(String(req.params.id), req.body, getRequestMeta(req));
@@ -117,6 +130,23 @@ export function coursesRouter(service?: CoursesServiceLike) {
       return next(error);
     }
   });
+
+  router.post(
+    "/:id/sections/:sectionId/restore",
+    validate(restoreSectionSchema),
+    async (req: AuthenticatedRequest, res, next) => {
+      try {
+        const item = await coursesService.restoreSection(
+          String(req.params.id),
+          String(req.params.sectionId),
+          getRequestMeta(req)
+        );
+        return res.status(200).json({ success: true, data: { item } });
+      } catch (error) {
+        return next(error);
+      }
+    }
+  );
 
   return router;
 }

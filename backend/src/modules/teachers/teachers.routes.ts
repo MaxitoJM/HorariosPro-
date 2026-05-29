@@ -7,6 +7,7 @@ import {
   createTeacherSchema,
   deleteTeacherSchema,
   listTeachersSchema,
+  restoreTeacherSchema,
   updateTeacherAssignableCoursesSchema,
   updateTeacherAvailabilitySchema,
   updateTeacherSchema
@@ -20,6 +21,7 @@ type TeachersServiceLike = Pick<
   | "createTeacher"
   | "updateTeacher"
   | "deleteTeacher"
+  | "restoreTeacher"
   | "updateTeacherAvailability"
   | "updateTeacherAssignableCourses"
 >;
@@ -78,6 +80,15 @@ export function teachersRouter(service?: TeachersServiceLike) {
     try {
       await teachersService.deleteTeacher(String(req.params.id), getRequestMeta(req));
       return res.status(200).json({ success: true, data: { message: "Docente eliminado correctamente" } });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post("/:id/restore", validate(restoreTeacherSchema), async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const item = await teachersService.restoreTeacher(String(req.params.id), getRequestMeta(req));
+      return res.status(200).json({ success: true, data: { item } });
     } catch (error) {
       return next(error);
     }

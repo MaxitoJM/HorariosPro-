@@ -70,6 +70,12 @@ export const deleteTeacherSchema = z.object({
   params: idParams
 });
 
+export const restoreTeacherSchema = z.object({
+  body: emptyBody,
+  query: emptyQuery,
+  params: idParams
+});
+
 export const listTeachersSchema = z.object({
   body: emptyBody,
   query: emptyQuery,

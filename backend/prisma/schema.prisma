@@ -38,6 +38,26 @@ enum ClassroomType {
   otro
 }
 
+enum UserStatus {
+  active
+  suspended
+  blocked
+}
+
+enum StudentStatus {
+  activo
+  egresado
+  retirado
+  suspendido
+}
+
+enum EnrollmentStatus {
+  inscrito
+  retirado
+  aprobado
+  reprobado
+}
+
 model User {
   id                  String               @id @default(cuid())
   nombre              String
@@ -47,12 +67,19 @@ model User {
   rol                 Role                 @default(estudiante)
   activo              Boolean              @default(true)
   verificado          Boolean              @default(false)
+  status              UserStatus           @default(active)
+  blockedUntil        DateTime?            @map("blocked_until")
+  blockReason         String?              @map("block_reason")
+  deletedAt           DateTime?            @map("deleted_at")
+  deletedBy           String?              @map("deleted_by")
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]
+  student             Student?
 
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -165,12 +192,15 @@ model Teacher {
   titulo           String?
   maxHorasSemana   Int                      @default(20) @map("max_horas_semana")
   activo           Boolean                  @default(true)
+  deletedAt        DateTime?                @map("deleted_at")
+  deletedBy        String?                  @map("deleted_by")
   createdAt        DateTime                 @default(now()) @map("created_at")
   updatedAt        DateTime                 @updatedAt @map("updated_at")
   availabilities   TeacherAvailability[]
   assignableCourses TeacherAssignableCourse[]
   sections         CourseSection[]
 
+  @@index([deletedAt])
   @@map("teachers")
 }
 
@@ -212,10 +242,13 @@ model Course {
   sesionesPorSemana   Int             @map("sesiones_por_semana")
   duracionMinutos     Int             @map("duracion_minutos")
   activo              Boolean         @default(true)
+  deletedAt           DateTime?       @map("deleted_at")
+  deletedBy           String?         @map("deleted_by")
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
   sections            CourseSection[]
 
+  @@index([deletedAt])
   @@map("courses")
 }
 
@@ -225,21 +258,28 @@ model CourseSection {
   codigoSeccion   String     @map("codigo_seccion")
   teacherId       String?    @map("teacher_id")
   classroomId     String?    @map("classroom_id")
+  periodoId       String?    @map("periodo_id")
   capacidad       Int
   inscritos       Int        @default(0)
   horarioResumen  String?    @map("horario_resumen")
   activo          Boolean    @default(true)
+  deletedAt       DateTime?  @map("deleted_at")
+  deletedBy       String?    @map("deleted_by")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
   course          Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
   teacher         Teacher?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   classroom       Classroom? @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  periodo         AcademicPeriod? @relation(fields: [periodoId], references: [id], onDelete: SetNull)
   scheduleMeetings SectionScheduleMeeting[]
+  enrollments     Enrollment[]
 
   @@unique([courseId, codigoSeccion])
   @@index([courseId])
   @@index([teacherId])
   @@index([classroomId])
+  @@index([periodoId])
+  @@index([deletedAt])
   @@map("course_sections")
 }
 
@@ -252,12 +292,15 @@ model Classroom {
   capacidad      Int
   equipamiento   Json
   activo         Boolean         @default(true)
+  deletedAt      DateTime?       @map("deleted_at")
+  deletedBy      String?         @map("deleted_by")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
   sections       CourseSection[]
   availabilities ClassroomAvailability[]
   scheduleMeetings SectionScheduleMeeting[]
 
+  @@index([deletedAt])
   @@map("classrooms")
 }
 
@@ -294,4 +337,84 @@ model SectionScheduleMeeting {
   @@index([timeBlockId])
   @@index([classroomId])
   @@map("section_schedule_meetings")
+}
+
+model AcademicPeriod {
+  id          String          @id @default(cuid())
+  codigo      String          @unique
+  nombre      String
+  fechaInicio DateTime        @map("fecha_inicio")
+  fechaFin    DateTime        @map("fecha_fin")
+  esActual    Boolean         @default(false) @map("es_actual")
+  activo      Boolean         @default(true)
+  deletedAt   DateTime?       @map("deleted_at")
+  deletedBy   String?         @map("deleted_by")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  sections    CourseSection[]
+  enrollments Enrollment[]
+
+  @@index([deletedAt])
+  @@index([esActual])
+  @@map("academic_periods")
+}
+
+model Program {
+  id           String    @id @default(cuid())
+  codigo       String    @unique
+  nombre       String
+  departamento String
+  activo       Boolean   @default(true)
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?   @map("deleted_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  students     Student[]
+
+  @@index([deletedAt])
+  @@map("programs")
+}
+
+model Student {
+  id          String        @id @default(cuid())
+  codigo      String        @unique
+  nombre      String
+  apellido    String
+  email       String        @unique
+  userId      String?       @unique @map("user_id")
+  programId   String?       @map("program_id")
+  estado      StudentStatus @default(activo)
+  deletedAt   DateTime?     @map("deleted_at")
+  deletedBy   String?       @map("deleted_by")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  program     Program?      @relation(fields: [programId], references: [id], onDelete: SetNull)
+  enrollments Enrollment[]
+
+  @@index([deletedAt])
+  @@index([programId])
+  @@map("students")
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  studentId String           @map("student_id")
+  sectionId String           @map("section_id")
+  periodoId String           @map("periodo_id")
+  estado    EnrollmentStatus @default(inscrito)
+  deletedAt DateTime?        @map("deleted_at")
+  deletedBy String?          @map("deleted_by")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  section   CourseSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  periodo   AcademicPeriod   @relation(fields: [periodoId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, sectionId, periodoId])
+  @@index([sectionId])
+  @@index([studentId])
+  @@index([periodoId])
+  @@index([deletedAt])
+  @@map("enrollments")
 }

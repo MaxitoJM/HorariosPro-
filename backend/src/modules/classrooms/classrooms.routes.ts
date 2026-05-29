@@ -8,6 +8,7 @@ import {
   createClassroomSchema,
   deleteClassroomSchema,
   listClassroomsSchema,
+  restoreClassroomSchema,
   updateClassroomAvailabilitySchema,
   updateClassroomSchema
 } from "./classrooms.schema.js";
@@ -20,6 +21,7 @@ type ClassroomsServiceLike = Pick<
   | "createClassroom"
   | "updateClassroom"
   | "deleteClassroom"
+  | "restoreClassroom"
   | "updateClassroomAvailability"
 >;
 
@@ -77,6 +79,15 @@ export function classroomsRouter(service?: ClassroomsServiceLike) {
     try {
       await classroomsService.deleteClassroom(String(req.params.id), getRequestMeta(req));
       return res.status(200).json({ success: true, data: { message: "Aula eliminada correctamente" } });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post("/:id/restore", validate(restoreClassroomSchema), async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const item = await classroomsService.restoreClassroom(String(req.params.id), getRequestMeta(req));
+      return res.status(200).json({ success: true, data: { item } });
     } catch (error) {
       return next(error);
     }
