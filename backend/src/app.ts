@@ -92,7 +92,17 @@ type AppDeps = {
     "getManualContext" | "saveManualAssignment" | "getOverview" | "detectConflicts" | "autoGenerate" | "reassignSection"
   >;
   dashboardService?: Pick<DashboardService, "getSummary">;
-  reportsService?: Pick<ReportsService, "getScheduleReport" | "exportScheduleCsv">;
+  reportsService?: Pick<
+    ReportsService,
+    | "getScheduleReport"
+    | "exportScheduleCsv"
+    | "getEnrollmentsReport"
+    | "exportEnrollmentsCsv"
+    | "getCourseDemandReport"
+    | "exportCourseDemandCsv"
+    | "getClassroomOccupancyReport"
+    | "exportClassroomOccupancyCsv"
+  >;
   usersService?: Pick<
     UsersService,
     "listUsers" | "updateUser" | "deleteUser" | "restoreUser" | "blockUser" | "unblockUser"
@@ -107,7 +117,15 @@ type AppDeps = {
   >;
   studentsService?: Pick<
     StudentsService,
-    "listStudents" | "getStudentById" | "createStudent" | "updateStudent" | "deleteStudent" | "restoreStudent"
+    | "listStudents"
+    | "getStudentById"
+    | "createStudent"
+    | "updateStudent"
+    | "deleteStudent"
+    | "restoreStudent"
+    | "generateImportTemplate"
+    | "previewImport"
+    | "commitImport"
   >;
   enrollmentsService?: Pick<
     EnrollmentsService,

@@ -162,6 +162,140 @@ export class ReportsService {
     };
   }
 
+  // ── Reportes academicos (Fase 3) ──────────────────────────────────────────
+
+  // Estudiantes inscritos por seccion/curso. Filtrable por periodo, curso y programa.
+  async getEnrollmentsReport(filters: { periodoId?: string; courseId?: string; programId?: string } = {}) {
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: {
+        estado: "inscrito",
+        ...(filters.periodoId ? { periodoId: filters.periodoId } : {}),
+        ...(filters.courseId ? { section: { courseId: filters.courseId } } : {}),
+        ...(filters.programId ? { student: { programId: filters.programId } } : {})
+      },
+      include: {
+        student: { include: { program: true } },
+        periodo: true,
+        section: { include: { course: true } }
+      },
+      orderBy: [{ createdAt: "asc" }]
+    });
+
+    const items = enrollments.map((e) => ({
+      enrollmentId: e.id,
+      estudianteCodigo: e.student.codigo,
+      estudianteNombre: `${e.student.nombre} ${e.student.apellido}`,
+      estudianteEmail: e.student.email,
+      programa: e.student.program?.nombre ?? "",
+      cursoCodigo: e.section.course.codigo,
+      cursoNombre: e.section.course.nombre,
+      seccion: e.section.codigoSeccion,
+      periodo: e.periodo.codigo
+    }));
+
+    return { total: items.length, items };
+  }
+
+  async exportEnrollmentsCsv(filters: { periodoId?: string; courseId?: string; programId?: string } = {}) {
+    const report = await this.getEnrollmentsReport(filters);
+    const rows = [
+      ["Codigo estudiante", "Estudiante", "Email", "Programa", "Curso", "Nombre curso", "Seccion", "Periodo"],
+      ...report.items.map((i) => [
+        i.estudianteCodigo,
+        i.estudianteNombre,
+        i.estudianteEmail,
+        i.programa,
+        i.cursoCodigo,
+        i.cursoNombre,
+        i.seccion,
+        i.periodo
+      ])
+    ];
+    return { filename: `inscritos-${new Date().toISOString().slice(0, 10)}.csv`, content: buildCsv(rows) };
+  }
+
+  // Demanda de cursos: total de inscritos activos por curso, ordenado desc.
+  async getCourseDemandReport(filters: { periodoId?: string } = {}) {
+    const courses = await this.prisma.course.findMany({
+      include: {
+        sections: {
+          where: { deletedAt: null },
+          include: {
+            _count: {
+              select: {
+                enrollments: {
+                  where: { estado: "inscrito", ...(filters.periodoId ? { periodoId: filters.periodoId } : {}) }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const items = courses
+      .map((c) => {
+        const inscritos = c.sections.reduce((acc, s) => acc + s._count.enrollments, 0);
+        const capacidad = c.sections.reduce((acc, s) => acc + s.capacidad, 0);
+        return {
+          cursoCodigo: c.codigo,
+          cursoNombre: c.nombre,
+          departamento: c.departamento,
+          secciones: c.sections.length,
+          inscritos,
+          capacidad,
+          ocupacion: capacidad > 0 ? round((inscritos / capacidad) * 100) : 0
+        };
+      })
+      .sort((a, b) => b.inscritos - a.inscritos);
+
+    return { total: items.length, items };
+  }
+
+  async exportCourseDemandCsv(filters: { periodoId?: string } = {}) {
+    const report = await this.getCourseDemandReport(filters);
+    const rows = [
+      ["Curso", "Nombre", "Departamento", "Secciones", "Inscritos", "Capacidad", "Ocupacion %"],
+      ...report.items.map((i) => [
+        i.cursoCodigo,
+        i.cursoNombre,
+        i.departamento,
+        i.secciones,
+        i.inscritos,
+        i.capacidad,
+        i.ocupacion
+      ])
+    ];
+    return { filename: `demanda-cursos-${new Date().toISOString().slice(0, 10)}.csv`, content: buildCsv(rows) };
+  }
+
+  // Ocupacion de aulas: reuniones programadas y capacidad por aula.
+  async getClassroomOccupancyReport() {
+    const classrooms = await this.prisma.classroom.findMany({
+      include: { _count: { select: { scheduleMeetings: true } } },
+      orderBy: [{ edificio: "asc" }, { codigo: "asc" }]
+    });
+
+    const items = classrooms.map((c) => ({
+      aulaCodigo: c.codigo,
+      edificio: c.edificio,
+      tipo: c.tipo,
+      capacidad: c.capacidad,
+      reunionesProgramadas: c._count.scheduleMeetings
+    }));
+
+    return { total: items.length, items };
+  }
+
+  async exportClassroomOccupancyCsv() {
+    const report = await this.getClassroomOccupancyReport();
+    const rows = [
+      ["Aula", "Edificio", "Tipo", "Capacidad", "Reuniones programadas"],
+      ...report.items.map((i) => [i.aulaCodigo, i.edificio, i.tipo, i.capacidad, i.reunionesProgramadas])
+    ];
+    return { filename: `ocupacion-aulas-${new Date().toISOString().slice(0, 10)}.csv`, content: buildCsv(rows) };
+  }
+
   private buildSectionWhere(filters: ScheduleReportFilters) {
     const where: any = { activo: true };
 
