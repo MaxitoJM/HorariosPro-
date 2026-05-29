@@ -17,7 +17,9 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(7),
   PASSWORD_RESET_EXPIRES_MINUTES: z.coerce.number().int().positive().default(15),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
-  CORS_ORIGIN: z.string().default("http://localhost:5500"),
+  CORS_ORIGIN: z
+    .string()
+    .default("http://localhost:5500,http://127.0.0.1:5500,http://[::1]:5500,http://localhost:5173,http://127.0.0.1:5173"),
   COOKIE_SECURE: z
     .string()
     .transform((v) => v === "true")

@@ -1,4 +1,5 @@
 import { state } from "../core/state.js";
+import { h } from "../core/dom.js";
 
 const WEEK_DAYS = [
   { value: "lunes", label: "Lunes" },
@@ -28,8 +29,8 @@ function renderTeacherRows(teachers) {
                 ${initialsForTeacher(teacher)}
               </div>
               <div>
-                <p class="font-medium text-gray-800">${teacher.titulo ? `${teacher.titulo} ` : ""}${teacher.nombre} ${teacher.apellido}</p>
-                <p class="text-sm text-gray-500">${teacher.email}</p>
+                <p class="font-medium text-gray-800">${teacher.titulo ? `${h(teacher.titulo)} ` : ""}${h(teacher.nombre)} ${h(teacher.apellido)}</p>
+                <p class="text-sm text-gray-500">${h(teacher.email)}</p>
               </div>
             </div>
           </td>
@@ -38,7 +39,7 @@ function renderTeacherRows(teachers) {
           </td>
           <td class="px-6 py-4">
             <p class="text-sm text-gray-800">${teacher.totalCursosAsignables} curso(s)</p>
-            <p class="text-xs text-gray-500">${teacher.assignableCourses.map((course) => course.nombreCurso).slice(0, 2).join(", ") || "Sin cursos"}</p>
+            <p class="text-xs text-gray-500">${teacher.assignableCourses.map((course) => h(course.nombreCurso)).slice(0, 2).join(", ") || "Sin cursos"}</p>
           </td>
           <td class="px-6 py-4">
             <span class="px-3 py-1 ${teacher.disponibilidadConfigurada ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"} rounded-full text-sm">
@@ -99,8 +100,8 @@ function renderCourseRows(teacher) {
     .map(
       (course) => `
         <div class="course-row grid grid-cols-3 gap-3">
-          <input type="text" class="course-code px-3 py-2 border border-gray-300 rounded-lg" placeholder="Codigo" value="${course.codigoCurso || ""}">
-          <input type="text" class="course-name px-3 py-2 border border-gray-300 rounded-lg" placeholder="Nombre del curso" value="${course.nombreCurso || ""}">
+          <input type="text" class="course-code px-3 py-2 border border-gray-300 rounded-lg" placeholder="Codigo" value="${h(course.codigoCurso || "")}">
+          <input type="text" class="course-name px-3 py-2 border border-gray-300 rounded-lg" placeholder="Nombre del curso" value="${h(course.nombreCurso || "")}">
           <button type="button" class="remove-course px-3 py-2 bg-red-50 text-red-700 rounded-lg">Quitar</button>
         </div>
       `

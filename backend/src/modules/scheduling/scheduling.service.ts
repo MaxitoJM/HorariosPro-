@@ -1,3 +1,5 @@
+import type { Prisma, PrismaClient, WeekDay } from "@prisma/client";
+import { DAY_ORDER, WORK_DAYS, isBlockCoveredByAvailability, parseTimeToMinutes } from "../../utils/time.js";
 import { HttpError } from "../../utils/http-error.js";
 import { ConflictDetectionService, type ConflictDetectionResult } from "./conflict-detection.service.js";
 
@@ -37,31 +39,6 @@ type CandidateSlot = {
   blockHoraFin: string;
   dayIndex: number;
 };
-
-const DAY_ORDER = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-const WORK_DAYS = DAY_ORDER.slice(0, 5);
-
-function parseTimeToMinutes(value: string): number {
-  const [h = 0, m = 0] = value.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function isBlockCoveredByAvailability(
-  availabilities: Array<{ activo: boolean; diaSemana: string; horaInicio: string; horaFin: string }>,
-  diaSemana: string,
-  blockStart: string,
-  blockEnd: string
-): boolean {
-  const bStart = parseTimeToMinutes(blockStart);
-  const bEnd = parseTimeToMinutes(blockEnd);
-  return availabilities.some(
-    (av) =>
-      av.activo &&
-      av.diaSemana === diaSemana &&
-      parseTimeToMinutes(av.horaInicio) <= bStart &&
-      parseTimeToMinutes(av.horaFin) >= bEnd
-  );
-}
 
 function pickSlots(slots: CandidateSlot[], count: number, avoidConsecutive: boolean): CandidateSlot[] | null {
   if (slots.length < count) return null;
@@ -104,7 +81,7 @@ function toHorarioResumen(meetings: any[]) {
 export class SchedulingService {
   private readonly conflictService: ConflictDetectionService;
 
-  constructor(private readonly prisma: any) {
+  constructor(private readonly prisma: PrismaClient) {
     this.conflictService = new ConflictDetectionService(prisma);
   }
 
@@ -361,7 +338,7 @@ export class SchedulingService {
       throw new HttpError(409, "El aula ya esta ocupada en uno de los bloques seleccionados", "CLASSROOM_ASSIGNMENT_CONFLICT");
     }
 
-    const createdMeetings = await this.prisma.$transaction(async (tx: any) => {
+    const createdMeetings = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.sectionScheduleMeeting.deleteMany({ where: { sectionId } });
 
       for (const meeting of input.meetings) {
@@ -587,7 +564,7 @@ export class SchedulingService {
 
     // Restore previous state
     if (previousMeetings.length > 0) {
-      await this.prisma.$transaction(async (tx: any) => {
+      await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         for (const m of previousMeetings) {
           await tx.sectionScheduleMeeting.create({
             data: { sectionId, diaSemana: m.diaSemana, timeBlockId: m.timeBlockId, classroomId: m.classroomId }
@@ -699,12 +676,12 @@ export class SchedulingService {
 
       // Persist the assignment
       const meetingLabels: string[] = [];
-      await this.prisma.$transaction(async (tx: any) => {
+      await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         for (const slot of selected) {
           await tx.sectionScheduleMeeting.create({
             data: {
               sectionId: section.id,
-              diaSemana: slot.diaSemana,
+              diaSemana: slot.diaSemana as WeekDay,
               timeBlockId: slot.timeBlockId,
               classroomId: classroom.id
             }

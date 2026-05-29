@@ -98,6 +98,26 @@ Credenciales iniciales del admin:
 - Email: `admin@proyectonucleo.edu`
 - Password: `Admin12345*`
 
+### Prueba local reproducible
+
+1. Verifica que PostgreSQL este activo en `localhost:5433`.
+2. Copia `backend/.env.example` como `backend/.env` y ajusta `DATABASE_URL` si tu usuario o password local son distintos.
+3. Ejecuta:
+
+```bash
+npm run install:backend
+npm run db:setup-postgres
+npm run db:generate
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+4. Abre `http://localhost:5500` e inicia sesion con el admin inicial.
+5. En DevTools > Network, confirma que las peticiones salgan a `http://localhost:4000/api/v1` y no a Render.
+
+En local el frontend usa automaticamente `http://localhost:4000/api/v1`. En despliegues no locales usa `https://horariospro.onrender.com/api/v1`, salvo que se defina otra URL en `window.__API_BASE_URL__`.
+
 ## Variables de entorno requeridas
 
 - `NODE_ENV`

@@ -1,3 +1,6 @@
+import type { PrismaClient } from "@prisma/client";
+import { DAY_ORDER, isBlockCoveredByAvailability } from "../../utils/time.js";
+
 export type ConflictSeverity = "critical" | "warning" | "info";
 
 export type ConflictType =
@@ -41,37 +44,13 @@ export type ConflictDetectionResult = {
   scannedAt: string;
 };
 
-const DAY_ORDER = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-
-function parseTimeToMinutes(value: string): number {
-  const [h = 0, m = 0] = value.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function isBlockCoveredByAvailability(
-  availabilities: Array<{ activo: boolean; diaSemana: string; horaInicio: string; horaFin: string }>,
-  diaSemana: string,
-  blockStart: string,
-  blockEnd: string
-): boolean {
-  const blockStartMin = parseTimeToMinutes(blockStart);
-  const blockEndMin = parseTimeToMinutes(blockEnd);
-  return availabilities.some(
-    (av) =>
-      av.activo &&
-      av.diaSemana === diaSemana &&
-      parseTimeToMinutes(av.horaInicio) <= blockStartMin &&
-      parseTimeToMinutes(av.horaFin) >= blockEndMin
-  );
-}
-
 let idSeq = 0;
 function makeId(): string {
   return `conflict-${Date.now()}-${++idSeq}`;
 }
 
 export class ConflictDetectionService {
-  constructor(private readonly prisma: any) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async detectAll(): Promise<ConflictDetectionResult> {
     idSeq = 0;

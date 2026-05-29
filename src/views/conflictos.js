@@ -1,4 +1,5 @@
 import { state } from '../core/state.js';
+import { h } from '../core/dom.js';
 
 const SEVERITY_CONFIG = {
   critical: { icon: '🔴', label: 'CRITICO',   badgeCss: 'bg-red-100 text-red-800',    rowCss: 'border-l-4 border-red-500' },
@@ -88,9 +89,9 @@ function renderConflictCard(conflict) {
   const typeLabel = TYPE_LABELS[conflict.type] ?? conflict.type;
 
   const meta = [
-    conflict.teacherNombre  && `<p><span class="text-gray-500">Docente:</span> ${conflict.teacherNombre}</p>`,
-    conflict.classroomCodigo && `<p><span class="text-gray-500">Aula:</span> ${conflict.classroomCodigo}</p>`,
-    conflict.courseCodigo   && `<p><span class="text-gray-500">Curso:</span> ${conflict.courseCodigo} — ${conflict.courseNombre ?? ''}</p>`,
+    conflict.teacherNombre  && `<p><span class="text-gray-500">Docente:</span> ${h(conflict.teacherNombre)}</p>`,
+    conflict.classroomCodigo && `<p><span class="text-gray-500">Aula:</span> ${h(conflict.classroomCodigo)}</p>`,
+    conflict.courseCodigo   && `<p><span class="text-gray-500">Curso:</span> ${h(conflict.courseCodigo)} — ${h(conflict.courseNombre ?? '')}</p>`,
     conflict.sectionCodigo  && `<p><span class="text-gray-500">Seccion:</span> ${conflict.sectionCodigo}</p>`,
     conflict.diaSemana      && `<p><span class="text-gray-500">Dia/Bloque:</span> ${conflict.diaSemana} ${conflict.timeBlockLabel ?? ''}</p>`
   ].filter(Boolean).join('');
@@ -99,7 +100,7 @@ function renderConflictCard(conflict) {
     ? `<div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mt-4">
         <p class="text-sm font-medium text-blue-900 mb-2">💡 Sugerencias:</p>
         <ul class="text-sm text-blue-800 space-y-1">
-          ${conflict.suggestions.map(s => `<li>• ${s}</li>`).join('')}
+          ${conflict.suggestions.map(s => `<li>• ${h(s)}</li>`).join('')}
         </ul>
       </div>`
     : '';
@@ -120,7 +121,7 @@ function renderConflictCard(conflict) {
               <h4 class="font-semibold text-gray-800">${typeLabel}</h4>
               <span class="px-2 py-0.5 rounded-full text-xs font-medium ${cfg.badgeCss}">${cfg.label}</span>
             </div>
-            <p class="text-gray-600 text-sm">${conflict.description}</p>
+            <p class="text-gray-600 text-sm">${h(conflict.description)}</p>
             ${meta ? `<div class="mt-2 space-y-0.5 text-sm">${meta}</div>` : ''}
             ${suggestions}
           </div>

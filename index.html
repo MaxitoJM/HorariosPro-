@@ -11,13 +11,17 @@
 <body>
   <div id="app"></div>
   <!--
-    Configuración del API en producción.
-    Local (npm run dev) → dejar comentado, se autodetecta http://localhost:4000.
-    Producción (Vercel) → descomentar y poner la URL pública del backend con /api/v1 al final.
+    Configuracion del API.
+    Local (npm run dev): se autodetecta http://localhost:4000.
+    Produccion: los hosts no locales usan la API publica en Render.
+    Para otro backend, define window.__API_BASE_URL__ antes de main.js.
   -->
   <script>
-  window.__API_BASE_URL__ = "https://horariospro.onrender.com/api/v1";
-</script>
+    const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+    if (!isLocalHost) {
+      window.__API_BASE_URL__ = "https://horariospro.onrender.com/api/v1";
+    }
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

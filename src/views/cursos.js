@@ -1,4 +1,5 @@
 import { state } from "../core/state.js";
+import { h } from "../core/dom.js";
 
 function renderCourseRows(items) {
   if (!items.length) {
@@ -10,10 +11,10 @@ function renderCourseRows(items) {
       (course) => `
         <tr class="hover:bg-gray-50 ${state.courses.selectedCourseId === course.id ? "bg-blue-50" : ""}">
           <td class="px-6 py-4">
-            <p class="font-semibold text-gray-800">${course.nombre}</p>
-            <p class="text-sm text-gray-500">${course.codigo}</p>
+            <p class="font-semibold text-gray-800">${h(course.nombre)}</p>
+            <p class="text-sm text-gray-500">${h(course.codigo)}</p>
           </td>
-          <td class="px-6 py-4">${course.departamento}</td>
+          <td class="px-6 py-4">${h(course.departamento)}</td>
           <td class="px-6 py-4">${course.creditos}</td>
           <td class="px-6 py-4">${course.sesionesPorSemana} x ${course.duracionMinutos} min</td>
           <td class="px-6 py-4">${course.totalSecciones}</td>
@@ -44,7 +45,7 @@ function renderSectionRows(course) {
     .map(
       (section) => `
         <tr class="hover:bg-gray-50">
-          <td class="px-6 py-4 font-medium text-gray-800">${section.codigoSeccion}</td>
+          <td class="px-6 py-4 font-medium text-gray-800">${h(section.codigoSeccion)}</td>
           <td class="px-6 py-4">${section.teacherNombre || "Sin docente"}</td>
           <td class="px-6 py-4">${section.classroomNombre || "Sin aula"}</td>
           <td class="px-6 py-4">${section.capacidad}</td>
@@ -72,7 +73,7 @@ function renderTeacherOptions(course) {
     '<option value="">Sin asignar</option>',
     ...assignableTeachers.map(
       (teacher) =>
-        `<option value="${teacher.id}" ${teacher.id === selectedId ? "selected" : ""}>${teacher.nombre} ${teacher.apellido}</option>`
+        `<option value="${teacher.id}" ${teacher.id === selectedId ? "selected" : ""}>${h(teacher.nombre)} ${h(teacher.apellido)}</option>`
     )
   ].join("");
 }
@@ -84,7 +85,7 @@ function renderClassroomOptions() {
     '<option value="">Sin asignar</option>',
     ...state.classrooms.items.map(
       (classroom) =>
-        `<option value="${classroom.id}" ${classroom.id === selectedId ? "selected" : ""}>${classroom.codigo} - ${classroom.edificio}</option>`
+        `<option value="${classroom.id}" ${classroom.id === selectedId ? "selected" : ""}>${h(classroom.codigo)} - ${h(classroom.edificio)}</option>`
     )
   ].join("");
 }
