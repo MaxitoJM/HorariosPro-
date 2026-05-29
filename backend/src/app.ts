@@ -24,6 +24,14 @@ import { TeachersService } from "./modules/teachers/teachers.service.js";
 import { teachersRouter } from "./modules/teachers/teachers.routes.js";
 import { usersRouter } from "./modules/users/users.routes.js";
 import { UsersService } from "./modules/users/users.service.js";
+import { academicPeriodsRouter } from "./modules/academic-periods/academic-periods.routes.js";
+import { AcademicPeriodsService } from "./modules/academic-periods/academic-periods.service.js";
+import { programsRouter } from "./modules/programs/programs.routes.js";
+import { ProgramsService } from "./modules/programs/programs.service.js";
+import { studentsRouter } from "./modules/students/students.routes.js";
+import { StudentsService } from "./modules/students/students.service.js";
+import { enrollmentsRouter } from "./modules/enrollments/enrollments.routes.js";
+import { EnrollmentsService } from "./modules/enrollments/enrollments.service.js";
 
 type AppDeps = {
   authService?: Pick<
@@ -52,6 +60,7 @@ type AppDeps = {
     | "createTeacher"
     | "updateTeacher"
     | "deleteTeacher"
+    | "restoreTeacher"
     | "updateTeacherAvailability"
     | "updateTeacherAssignableCourses"
   >;
@@ -62,9 +71,11 @@ type AppDeps = {
     | "createCourse"
     | "updateCourse"
     | "deleteCourse"
+    | "restoreCourse"
     | "createSection"
     | "updateSection"
     | "deleteSection"
+    | "restoreSection"
   >;
   classroomsService?: Pick<
     ClassroomsService,
@@ -73,6 +84,7 @@ type AppDeps = {
     | "createClassroom"
     | "updateClassroom"
     | "deleteClassroom"
+    | "restoreClassroom"
     | "updateClassroomAvailability"
   >;
   schedulingService?: Pick<
@@ -81,12 +93,37 @@ type AppDeps = {
   >;
   dashboardService?: Pick<DashboardService, "getSummary">;
   reportsService?: Pick<ReportsService, "getScheduleReport" | "exportScheduleCsv">;
-  usersService?: Pick<UsersService, "listUsers" | "updateUser" | "deleteUser">;
+  usersService?: Pick<
+    UsersService,
+    "listUsers" | "updateUser" | "deleteUser" | "restoreUser" | "blockUser" | "unblockUser"
+  >;
+  academicPeriodsService?: Pick<
+    AcademicPeriodsService,
+    "listPeriods" | "getPeriodById" | "createPeriod" | "updatePeriod" | "deletePeriod" | "restorePeriod" | "setCurrentPeriod"
+  >;
+  programsService?: Pick<
+    ProgramsService,
+    "listPrograms" | "getProgramById" | "createProgram" | "updateProgram" | "deleteProgram" | "restoreProgram"
+  >;
+  studentsService?: Pick<
+    StudentsService,
+    "listStudents" | "getStudentById" | "createStudent" | "updateStudent" | "deleteStudent" | "restoreStudent"
+  >;
+  enrollmentsService?: Pick<
+    EnrollmentsService,
+    "listEnrollments" | "getEnrollmentById" | "enroll" | "withdraw" | "setStatus"
+  >;
 };
 
 export function createApp(deps: AppDeps = {}) {
   const app = express();
   const allowedOrigins = env.CORS_ORIGIN.split(",").map((o) => o.trim());
+
+  // En producción Render/Railway/Fly enrutan vía proxy; sin esto req.ip
+  // reporta la IP del proxy y rate-limit/audit-log se vuelven inútiles.
+  if (env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
 
   app.use(
     cors({
@@ -101,7 +138,19 @@ export function createApp(deps: AppDeps = {}) {
     })
   );
 
-  app.use(helmet());
+  // Helmet endurecido pero sin romper el frontend actual:
+  // - CSP deshabilitada explícitamente: el frontend vanilla usa Tailwind por CDN y
+  //   carga assets desde otro origen. TODO[Fase 8]: activar CSP estricta cuando
+  //   migremos a un bundler o servamos el frontend desde el mismo origen.
+  // - CORP permisivo: necesario para que el frontend en Vercel consuma recursos.
+  // - Referrer mínimo: no filtramos la URL de origen al backend.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      referrerPolicy: { policy: "no-referrer" }
+    })
+  );
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
@@ -116,6 +165,10 @@ export function createApp(deps: AppDeps = {}) {
   app.use("/api/v1/dashboard", dashboardRouter(deps.dashboardService));
   app.use("/api/v1/reports", reportsRouter(deps.reportsService));
   app.use("/api/v1/users", usersRouter(deps.usersService));
+  app.use("/api/v1/academic-periods", academicPeriodsRouter(deps.academicPeriodsService));
+  app.use("/api/v1/programs", programsRouter(deps.programsService));
+  app.use("/api/v1/students", studentsRouter(deps.studentsService));
+  app.use("/api/v1/enrollments", enrollmentsRouter(deps.enrollmentsService));
 
   app.use(notFound);
   app.use(errorHandler);
