@@ -15,6 +15,9 @@ import { setupConflictosScreen } from '../views/conflictosController.js';
 import { setupReportesScreen } from '../views/reportesController.js';
 import { setupUsuariosScreen } from '../views/usuariosController.js';
 import { setupEstudiantesScreen } from '../views/estudiantesController.js';
+import { setupPeriodosScreen } from '../views/periodosController.js';
+import { setupProgramasScreen } from '../views/programasController.js';
+import { setupInscripcionesScreen } from '../views/inscripcionesController.js';
 
 const ROLE_ALLOWED_SCREENS = {
   admin: screens,
@@ -109,6 +112,18 @@ export async function renderApp() {
 
   if (state.currentScreen === 'estudiantes') {
     setupEstudiantesScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'periodos') {
+    setupPeriodosScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'programas') {
+    setupProgramasScreen(renderApp);
+  }
+
+  if (state.currentScreen === 'inscripciones') {
+    setupInscripcionesScreen(renderApp);
   }
 
   screens.forEach((screen) => {
