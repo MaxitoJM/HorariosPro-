@@ -31,6 +31,9 @@ export function renderLayout(screenHtml) {
           ${renderSidebarItem('reportes', '🧾', 'Reportes')}
           ${renderSidebarItem('usuarios', '👥', 'Usuarios')}
           ${renderSidebarItem('estudiantes', '🎓', 'Estudiantes')}
+          ${renderSidebarItem('inscripciones', '📝', 'Inscripciones')}
+          ${renderSidebarItem('periodos', '🗓️', 'Periodos')}
+          ${renderSidebarItem('programas', '🏫', 'Programas')}
         </nav>
 
         <div class="p-4 border-t border-gray-200">

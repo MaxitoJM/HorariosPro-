@@ -10,6 +10,9 @@ import { renderConflictos } from './conflictos.js';
 import { renderReportes } from './reportes.js';
 import { renderUsuarios } from './usuarios.js';
 import { renderEstudiantes } from './estudiantes.js';
+import { renderPeriodos } from './periodos.js';
+import { renderProgramas } from './programas.js';
+import { renderInscripciones } from './inscripciones.js';
 
 export function renderScreen() {
   switch (state.currentScreen) {
@@ -35,6 +38,12 @@ export function renderScreen() {
       return renderUsuarios();
     case 'estudiantes':
       return renderEstudiantes();
+    case 'periodos':
+      return renderPeriodos();
+    case 'programas':
+      return renderProgramas();
+    case 'inscripciones':
+      return renderInscripciones();
     default:
       return renderDashboard();
   }

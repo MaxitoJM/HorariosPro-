@@ -9,7 +9,10 @@
   'conflictos',
   'reportes',
   'usuarios',
-  'estudiantes'
+  'estudiantes',
+  'periodos',
+  'programas',
+  'inscripciones'
 ];
 
 export const state = {
@@ -98,6 +101,28 @@ export const state = {
     importPreview: null,
     importResult: null,
     importError: null,
+    loading: false,
+    loaded: false,
+    error: null
+  },
+  periods: {
+    items: [],
+    draft: null,
+    loading: false,
+    loaded: false,
+    error: null
+  },
+  programs: {
+    items: [],
+    draft: null,
+    search: "",
+    loading: false,
+    loaded: false,
+    error: null
+  },
+  enrollments: {
+    items: [],
+    filters: { sectionId: "", studentId: "", periodoId: "" },
     loading: false,
     loaded: false,
     error: null
@@ -505,3 +530,39 @@ export function clearStudentImport() {
 export function resetStudentsLoaded() {
   state.students.loaded = false;
 }
+
+// ── Periodos académicos ──
+export function setPeriodsLoading(loading) { state.periods.loading = loading; }
+export function setPeriodsError(error) { state.periods.error = error; }
+export function setPeriodsData(items) {
+  state.periods.items = items;
+  state.periods.loaded = true;
+  state.periods.error = null;
+}
+export function setPeriodDraft(draft) { state.periods.draft = draft; }
+export function resetPeriodsLoaded() { state.periods.loaded = false; }
+
+// ── Programas ──
+export function setProgramsLoading(loading) { state.programs.loading = loading; }
+export function setProgramsError(error) { state.programs.error = error; }
+export function setProgramsData(items) {
+  state.programs.items = items;
+  state.programs.loaded = true;
+  state.programs.error = null;
+}
+export function setProgramDraft(draft) { state.programs.draft = draft; }
+export function setProgramsSearch(search) { state.programs.search = search; }
+export function resetProgramsLoaded() { state.programs.loaded = false; }
+
+// ── Inscripciones ──
+export function setEnrollmentsLoading(loading) { state.enrollments.loading = loading; }
+export function setEnrollmentsError(error) { state.enrollments.error = error; }
+export function setEnrollmentsData(items) {
+  state.enrollments.items = items;
+  state.enrollments.loaded = true;
+  state.enrollments.error = null;
+}
+export function setEnrollmentsFilters(filters) {
+  state.enrollments.filters = { ...state.enrollments.filters, ...filters };
+}
+export function resetEnrollmentsLoaded() { state.enrollments.loaded = false; }
