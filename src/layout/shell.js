@@ -30,6 +30,7 @@ export function renderLayout(screenHtml) {
           ${renderSidebarItem('conflictos', '⚠️', 'Conflictos')}
           ${renderSidebarItem('reportes', '🧾', 'Reportes')}
           ${renderSidebarItem('usuarios', '👥', 'Usuarios')}
+          ${renderSidebarItem('estudiantes', '🎓', 'Estudiantes')}
         </nav>
 
         <div class="p-4 border-t border-gray-200">
