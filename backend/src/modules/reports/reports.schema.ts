@@ -26,3 +26,31 @@ export const scheduleExportSchema = z.object({
   }),
   params: z.object({}).default({})
 });
+
+const formatQuery = z.enum(["csv"]).optional();
+
+export const enrollmentsReportSchema = z.object({
+  body: z.object({}).default({}),
+  query: z.object({
+    periodoId: z.string().optional(),
+    courseId: z.string().optional(),
+    programId: z.string().optional(),
+    format: formatQuery
+  }),
+  params: z.object({}).default({})
+});
+
+export const courseDemandReportSchema = z.object({
+  body: z.object({}).default({}),
+  query: z.object({
+    periodoId: z.string().optional(),
+    format: formatQuery
+  }),
+  params: z.object({}).default({})
+});
+
+export const occupancyReportSchema = z.object({
+  body: z.object({}).default({}),
+  query: z.object({ format: formatQuery }),
+  params: z.object({}).default({})
+});

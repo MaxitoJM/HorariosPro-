@@ -40,7 +40,23 @@ function buildStudentsServiceMock() {
     createStudent: vi.fn().mockResolvedValue({ id: "s2", codigo: "E2" }),
     updateStudent: vi.fn().mockResolvedValue({ id: "s1", codigo: "E1" }),
     deleteStudent: vi.fn().mockResolvedValue(undefined),
-    restoreStudent: vi.fn().mockResolvedValue({ id: "s1", codigo: "E1" })
+    restoreStudent: vi.fn().mockResolvedValue({ id: "s1", codigo: "E1" }),
+    generateImportTemplate: vi.fn().mockResolvedValue(Buffer.from("PK-fake-xlsx")),
+    previewImport: vi.fn().mockResolvedValue({ total: 2, validos: 1, invalidos: 1, filas: [] }),
+    commitImport: vi.fn().mockResolvedValue({ creados: 1, omitidos: 1, totalProcesadas: 2, detalleOmitidos: [] })
+  };
+}
+
+function buildReportsServiceMock() {
+  return {
+    getScheduleReport: vi.fn(),
+    exportScheduleCsv: vi.fn(),
+    getEnrollmentsReport: vi.fn().mockResolvedValue({ total: 1, items: [{ estudianteCodigo: "E1", cursoCodigo: "MAT" }] }),
+    exportEnrollmentsCsv: vi.fn().mockResolvedValue({ filename: "inscritos.csv", content: "Codigo estudiante\nE1" }),
+    getCourseDemandReport: vi.fn().mockResolvedValue({ total: 1, items: [{ cursoCodigo: "MAT", inscritos: 5 }] }),
+    exportCourseDemandCsv: vi.fn().mockResolvedValue({ filename: "demanda.csv", content: "Curso\nMAT" }),
+    getClassroomOccupancyReport: vi.fn().mockResolvedValue({ total: 1, items: [{ aulaCodigo: "A1", reunionesProgramadas: 3 }] }),
+    exportClassroomOccupancyCsv: vi.fn().mockResolvedValue({ filename: "ocupacion.csv", content: "Aula\nA1" })
   };
 }
 
@@ -164,5 +180,76 @@ describe("enrollments integration", () => {
       .send({ estado: "aprobado" });
     expect(res.status).toBe(200);
     expect(res.body.data.item.estado).toBe("aprobado");
+  });
+});
+
+describe("reports academicos integration", () => {
+  it("reporte de inscritos (json)", async () => {
+    const app = createApp({ reportsService: buildReportsServiceMock() as any });
+    const res = await request(app).get("/api/v1/reports/enrollments").set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.total).toBe(1);
+  });
+
+  it("reporte de inscritos (csv)", async () => {
+    const app = createApp({ reportsService: buildReportsServiceMock() as any });
+    const res = await request(app)
+      .get("/api/v1/reports/enrollments?format=csv")
+      .set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/csv");
+  });
+
+  it("reporte de demanda de cursos", async () => {
+    const app = createApp({ reportsService: buildReportsServiceMock() as any });
+    const res = await request(app).get("/api/v1/reports/course-demand").set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.items[0].cursoCodigo).toBe("MAT");
+  });
+
+  it("reporte de ocupacion de aulas", async () => {
+    const app = createApp({ reportsService: buildReportsServiceMock() as any });
+    const res = await request(app).get("/api/v1/reports/classroom-occupancy").set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.items[0].aulaCodigo).toBe("A1");
+  });
+});
+
+describe("students import integration", () => {
+  it("descarga plantilla xlsx", async () => {
+    const app = createApp({ studentsService: buildStudentsServiceMock() as any });
+    const res = await request(app)
+      .get("/api/v1/students/import/template")
+      .set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("spreadsheetml");
+  });
+
+  it("preview sin archivo devuelve 400", async () => {
+    const app = createApp({ studentsService: buildStudentsServiceMock() as any });
+    const res = await request(app)
+      .post("/api/v1/students/import/preview")
+      .set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(400);
+  });
+
+  it("preview con archivo devuelve resumen", async () => {
+    const app = createApp({ studentsService: buildStudentsServiceMock() as any });
+    const res = await request(app)
+      .post("/api/v1/students/import/preview")
+      .set("Authorization", `Bearer ${adminToken()}`)
+      .attach("file", Buffer.from("PK-fake"), "import.xlsx");
+    expect(res.status).toBe(200);
+    expect(res.body.data.total).toBe(2);
+  });
+
+  it("commit con archivo crea estudiantes", async () => {
+    const app = createApp({ studentsService: buildStudentsServiceMock() as any });
+    const res = await request(app)
+      .post("/api/v1/students/import/commit")
+      .set("Authorization", `Bearer ${adminToken()}`)
+      .attach("file", Buffer.from("PK-fake"), "import.xlsx");
+    expect(res.status).toBe(201);
+    expect(res.body.data.creados).toBe(1);
   });
 });
