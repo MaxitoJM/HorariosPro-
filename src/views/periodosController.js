@@ -13,7 +13,8 @@ async function load(renderApp) {
   setPeriodsError(null);
   renderApp();
   try {
-    setPeriodsData(await listPeriods());
+    const data = await listPeriods();
+    setPeriodsData(data.items ?? data);
   } catch (error) {
     setPeriodsError(error.message || "No se pudieron cargar los periodos");
   } finally {
