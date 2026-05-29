@@ -9,6 +9,7 @@ import { renderHorarios } from './horarios.js';
 import { renderConflictos } from './conflictos.js';
 import { renderReportes } from './reportes.js';
 import { renderUsuarios } from './usuarios.js';
+import { renderEstudiantes } from './estudiantes.js';
 
 export function renderScreen() {
   switch (state.currentScreen) {
@@ -32,6 +33,8 @@ export function renderScreen() {
       return renderReportes();
     case 'usuarios':
       return renderUsuarios();
+    case 'estudiantes':
+      return renderEstudiantes();
     default:
       return renderDashboard();
   }

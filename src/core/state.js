@@ -8,7 +8,8 @@
   'horarios',
   'conflictos',
   'reportes',
-  'usuarios'
+  'usuarios',
+  'estudiantes'
 ];
 
 export const state = {
@@ -85,6 +86,18 @@ export const state = {
   users: {
     items: [],
     draft: null,
+    loading: false,
+    loaded: false,
+    error: null
+  },
+  students: {
+    items: [],
+    pagination: null,
+    draft: null,
+    search: "",
+    importPreview: null,
+    importResult: null,
+    importError: null,
     loading: false,
     loaded: false,
     error: null
@@ -443,4 +456,52 @@ export function setUserDraft(draft) {
 
 export function resetUsersLoaded() {
   state.users.loaded = false;
+}
+
+export function setStudentsLoading(loading) {
+  state.students.loading = loading;
+}
+
+export function setStudentsError(error) {
+  state.students.error = error;
+}
+
+export function setStudentsData(data) {
+  state.students.items = data.items;
+  state.students.pagination = data.pagination ?? null;
+  state.students.loaded = true;
+  state.students.error = null;
+}
+
+export function setStudentDraft(draft) {
+  state.students.draft = draft;
+}
+
+export function setStudentsSearch(search) {
+  state.students.search = search;
+}
+
+export function setStudentImportPreview(preview) {
+  state.students.importPreview = preview;
+  state.students.importError = null;
+}
+
+export function setStudentImportResult(result) {
+  state.students.importResult = result;
+  state.students.importPreview = null;
+  state.students.importError = null;
+}
+
+export function setStudentImportError(error) {
+  state.students.importError = error;
+}
+
+export function clearStudentImport() {
+  state.students.importPreview = null;
+  state.students.importResult = null;
+  state.students.importError = null;
+}
+
+export function resetStudentsLoaded() {
+  state.students.loaded = false;
 }
